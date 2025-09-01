@@ -267,50 +267,260 @@ def fetch_top_stocks_by_volume(max_stocks: int = 1000, cache_days: int = 7) -> L
     print(f"[INFO] Fetching top {max_stocks} stocks by volume...")
     
     try:
-        # Method 1: Try to get S&P 500 + NASDAQ 100 + Russell 2000 components
         tickers = set()
         
-        # S&P 500 (most liquid large caps)
+        # Method 1: Comprehensive static list of major stocks
+        major_stocks = """
+        # S&P 500 Major Companies
+        AAPL MSFT GOOGL GOOG AMZN META NVDA TSLA AVGO ORCL INTC AMD MU QCOM TXN IBM CRM NOW
+        JPM BAC WFC C GS MS SCHW BLK BK STT PNC USB COF AXP
+        XOM CVX COP SLB HAL EOG PXD MPC VLO
+        UNH JNJ PFE MRK ABBV TMO DHR ABT BMY LLY
+        PG KO PEP COST WMT TGT KMB CL
+        HD LOW NKE SBUX MCD YUM CMG DPZ PZZA
+        NEE DUK SO AEP EXC XEL SRE
+        PLD AMT CCI EQIX DLR SPG O PSA
+        CSCO ANET DELL HPE
+        MA V PYPL
+        NFLX DIS CMCSA FOX
+        BA CAT DE GE HON MMM UPS FDX
+        CVS WBA CI HUM ANTM
+        ADBE CRM ORCL SAP
+        LMT RTX NOC GD
+        TMO DHR ABT BMY LLY
+        AMGN GILD BIIB VRTX
+        ISRG MDT SYK
+        ACN CTSH
+        ADSK INTU
+        AMAT LRCX KLAC
+        AVGO QCOM TXN
+        BKR HAL SLB
+        CME ICE
+        COO DHR
+        CPB GIS K
+        D DUK SO
+        EBAY ETSY
+        EL F
+        EXC NEE
+        FIS FISV
+        GE HON
+        GPN FISV
+        HCA UHS
+        HSY K
+        ICE CME
+        ILMN
+        ISRG
+        JCI
+        KDP PEP
+        KHC K
+        LH
+        LMT
+        LRCX
+        MCD
+        MDLZ K
+        MDT
+        MMM
+        MO
+        MRK
+        MSI
+        MTB
+        NCLH
+        NEE
+        NOC
+        NTRS
+        NUE
+        NVDA
+        NXPI
+        O
+        ODFL
+        OGN
+        OMC
+        ORLY
+        OXY
+        PAYX
+        PCAR
+        PEG
+        PEP
+        PFE
+        PG
+        PGR
+        PH
+        PHM
+        PKG
+        PLD
+        PM
+        PNC
+        PPG
+        PPL
+        PRU
+        PSA
+        PSX
+        PWR
+        PXD
+        QCOM
+        QRVO
+        RCL
+        REG
+        REGN
+        RF
+        RHI
+        RJF
+        RL
+        RMD
+        ROK
+        ROP
+        ROST
+        RSG
+        RTX
+        SBAC
+        SBUX
+        SCHW
+        SEDG
+        SHW
+        SIVB
+        SJM
+        SLB
+        SNA
+        SNPS
+        SO
+        SPG
+        SRE
+        STE
+        STT
+        STX
+        STZ
+        SWK
+        SWKS
+        SYF
+        SYK
+        SYY
+        T
+        TAP
+        TDG
+        TDY
+        TEL
+        TER
+        TFC
+        TFX
+        TGT
+        TJX
+        TMO
+        TPR
+        TRMB
+        TROW
+        TRV
+        TSCO
+        TSLA
+        TSN
+        TT
+        TTD
+        TTWO
+        TWTR
+        TXN
+        TXT
+        TYL
+        UAA
+        UAL
+        UDR
+        UHS
+        ULTA
+        UNH
+        UNP
+        UPS
+        URI
+        USB
+        V
+        VFC
+        VICI
+        VLO
+        VMC
+        VRSK
+        VRSN
+        VRTX
+        VTI
+        VTRS
+        VZ
+        WAB
+        WAT
+        WBA
+        WEC
+        WELL
+        WFC
+        WLTW
+        WM
+        WMB
+        WMT
+        WRB
+        WST
+        WTW
+        WY
+        WYNN
+        XEL
+        XOM
+        XRAY
+        XYL
+        YUM
+        ZBH
+        ZBRA
+        ZION
+        ZTS
+        
+        # Popular ETFs
+        SPY QQQ IWM VTI VOO VEA VWO EFA EEM AGG TLT LQD HYG
+        VUG VTV VYM VNQ VGT VHT VDE VFH VOX VCR VDC VDY
+        ARKK ARKW ARKQ ARKG ARKF
+        TQQQ SQQQ UPRO SPXU
+        TMF TBT
+        GLD SLV
+        XLE XLF XLI XLK XLV XLY XLP XLU XLB XLC XLY XLP XLU XLB XLC
+        
+        # Chinese ADRs
+        BABA JD PDD NIO XPEV LI BIDU TME VIPS YMM BILI TAL EDU
+        ZTO YMM VIPS TME BIDU BABA JD PDD NIO XPEV LI
+        
+        # Crypto-related
+        COIN MSTR
+        
+        # Meme stocks
+        GME AMC BBBY
+        
+        # Other popular stocks
+        ROKU ZM PTON
+        
+        # Additional S&P 500 companies
+        A ADI ADM AES AFL AIV ALGN ALK ALLE ALXN AMCR AMD AME AMG AMP AMT ANSS ANTM AOS APA APD APH APTV ARE ARNC ATR AVB AVY AWK AXP AZO BA BAX BDX BEN BF.B BIIB BK BKNG BLK BLL BMY BR BRK.B BSX BWA BXP C CAG CAH CAT CB CBOE CBRE CCI CCL CDNS CDW CE CERN CF CHD CHRW CHTR CI CINF CL CLX CMA CMCSA CME CMG CMCSA CMS CNP CNX COF COG COO COP COST CPB CPG CPRI CPRT CPT CRL CRM CSCO CSGP CSX CTAS CTLT CTSH CTVA CTXS CVS CVX CXO D DAL DD DE DFS DG DGX DHI DHR DIS DISCA DISCK DISH DLTR DOV DOW DRE DRI DTE DUK DVA DVN DXC EA EBAY ECL ED EFX EIX EL EMN EMR ENPH EOG EPAM EQIX EQR ES ESS ETN ETR ETSY EVRG EW EXC EXPD EXPE EXR F FANG FAST FB FBHS FCX FDX FE FFIV FIS FISV FITB FLT FMC FOX FOXA FRC FRT FTI FTV GD GE GILD GIS GL GLW GM GOOG GOOGL GPC GPN GPS GRMN GS GWW HAL HAS HBAN HBI HCA HCSG HD HES HIG HII HLT HOG HOLX HON HPE HPQ HRL HSIC HST HSY HUM HWM IBM ICE IDXX IEX IFF ILMN INCY INFO INTC INTU INVH IP IPG IPGP IQV IR IRM ISRG IT ITW IVZ JBHT JCI JKHY JLL JNJ JNPR JPM JWN K KBWR KDP KEM KEX KEY KEYS KHC KIM KKR KLAC KMB KMI KMX KO KR KRC KSU L LAD LH LKQ LLY LMT LNC LNT LOW LRCX LUMN LUV LVS LW LYB LYV MA MAA MAR MAS MCD MCHP MCK MCO MDLZ MDT MDU MEC MGM MHK MKC MKTX MLM MMC MNST MO MOH MOS MPC MPWR MRK MRO MS MSFT MSI MSM MTB MTD MU MXIM MYL NCLH NDAQ NEE NEM NFLX NKE NLOK NLSN NOC NOV NOW NRG NSC NTAP NTRS NUE NVDA NVR NWL NWS NWSA NXPI NXST O ODFL OGN OKE OMC ORCL ORLY OXY PAYX PCAR PEAK PEG PEP PFE PFG PG PGR PH PHM PKG PKI PLD PM PNC PNR PNW PPG PPL PRGO PRU PSA PSX PTC PWR PXD PYPL QCOM QRVO RCL REG REGN RF RHI RJF RL RMD ROK ROP ROST RSG RTX SBAC SBUX SCHW SEDG SHW SIVB SJM SLB SNA SNPS SO SPG SRE STE STT STX STZ SWK SWKS SYF SYK SYY T TAP TDG TDY TEL TER TFC TFX TGT TJX TMO TPR TRMB TROW TRV TSCO TSLA TSN TT TTD TTWO TWTR TXN TXT TYL UAA UAL UDR UHS ULTA UNH UNP UPS URI USB V VFC VICI VLO VMC VRSK VRSN VRTX VTI VTRS VZ WAB WAT WBA WEC WELL WFC WLTW WM WMB WMT WRB WST WTW WY WYNN XEL XOM XRAY XYL YUM ZBH ZBRA ZION ZM ZTO ZTS
+        """
+        
+        # Parse the major stocks list
+        for line in major_stocks.split('\n'):
+            if line.strip() and not line.strip().startswith('#'):
+                tickers.update(line.strip().split())
+        
+        # Method 2: Try to get additional stocks from web sources
         try:
             import requests
+            # Try to get S&P 500 from Wikipedia
             sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-            response = requests.get(sp500_url, timeout=10)
+            response = requests.get(sp500_url, timeout=15)
             if response.status_code == 200:
                 import re
-                # Extract tickers from the table
-                ticker_matches = re.findall(r'<td><a[^>]*>([A-Z]{1,5})</a></td>', response.text)
-                tickers.update(ticker_matches)
-                print(f"[INFO] Found {len(ticker_matches)} S&P 500 tickers")
+                # More comprehensive regex patterns
+                patterns = [
+                    r'<td><a[^>]*>([A-Z]{1,5})</a></td>',
+                    r'<td>([A-Z]{1,5})</td>',
+                    r'<a[^>]*>([A-Z]{1,5})</a>',
+                ]
+                for pattern in patterns:
+                    matches = re.findall(pattern, response.text)
+                    tickers.update(matches)
+                print(f"[INFO] Found {len(matches)} additional tickers from S&P 500")
         except Exception as e:
-            print(f"[WARN] Failed to fetch S&P 500: {e}")
-        
-        # NASDAQ 100 (tech heavy)
-        try:
-            nasdaq_url = "https://en.wikipedia.org/wiki/Nasdaq-100"
-            response = requests.get(nasdaq_url, timeout=10)
-            if response.status_code == 200:
-                import re
-                ticker_matches = re.findall(r'<td><a[^>]*>([A-Z]{1,5})</a></td>', response.text)
-                tickers.update(ticker_matches)
-                print(f"[INFO] Found {len(ticker_matches)} NASDAQ 100 tickers")
-        except Exception as e:
-            print(f"[WARN] Failed to fetch NASDAQ 100: {e}")
-        
-        # If we don't have enough, add some popular ETFs and additional stocks
-        if len(tickers) < 500:
-            additional = """
-            SPY QQQ IWM VTI VOO VEA VWO EFA EEM AGG TLT LQD HYG
-            BABA JD PDD NIO XPEV LI BIDU TME VIPS YMM
-            BRK.A BRK.B JNJ PG KO PEP WMT COST TGT HD LOW
-            MCD SBUX YUM CMG DPZ PZZA
-            BA CAT DE GE HON MMM UPS FDX
-            CVS WBA CI HUM ANTM
-            ADBE CRM ORCL SAP
-            """
-            tickers.update(additional.split())
+            print(f"[WARN] Failed to fetch additional tickers: {e}")
         
         # Convert to sorted list and limit
         ticker_list = sorted(list(tickers))[:max_stocks]
+        
+        print(f"[INFO] Total unique tickers collected: {len(ticker_list)}")
         
         # Cache the result
         cache_data = {
