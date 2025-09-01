@@ -1,0 +1,47 @@
+name: Paper Trader (ChartScanAI)
+
+on:
+  schedule:
+    # 09:35 ET during Daylight (UTC-4)
+    - cron: "35 13 * * 1-5"
+    # 09:35 ET during Standard (UTC-5)
+    - cron: "35 14 * * 1-5"
+  workflow_dispatch: {}
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install deps (CPU)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu "torch>=2.3,<3" "torchvision>=0.18,<1"
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install ultralytics yfinance mplfinance pandas numpy pillow alpaca-py; fi
+
+      - name: Run trader (DRY RUN if no secrets)
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+        run: |
+          python paper_trader_fast.py
+
+      - name: Commit artifacts
+        run: |
+          git config user.name "chartscan-bot"
+          git config user.email "chartscan-bot@users.noreply.github.com"
+          git add daily_runs/ paper_state.json || true
+          git commit -m "chore(run): paper bot artifacts $(date -u +'%Y-%m-%d %H:%M:%SZ')" || echo "No changes"
+          git push
