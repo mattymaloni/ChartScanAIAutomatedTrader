@@ -67,14 +67,14 @@ class Config:
     yolo_imgsz: int = 768
 
     # --- universe ---
-    universe_source: str = "static"      # "static" | "csv"
+    universe_source: str = "dynamic"     # "static" | "csv" | "dynamic"
     universe_csv_path: str = "tickers.csv"
-    max_universe_size: int = 200
+    max_universe_size: int = 1000
 
     # --- universe filters ---
-    max_price: float = 1_500_000.0
+    max_price: float = 3000.0
     min_price: float = 5.0
-    min_dollar_vol: float = 5e6
+    min_dollar_vol: float = 1e6  # Lowered to 1M to include more stocks
     dollar_vol_lookback: int = 70
 
     # --- test selection ---
@@ -205,7 +205,7 @@ def load_candidates_from_csv(path: str) -> List[str]:
 
 
 def load_candidates_static() -> List[str]:
-    # Keep your original static list; truncated here for brevity. Add/trim as you like.
+    """Fallback static list for when dynamic fetching fails."""
     static = """
 AAPL MSFT GOOGL AMZN META NVDA TSLA AVGO ORCL INTC AMD MU QCOM TXN IBM CRM NOW
 JPM BAC WFC C GS MS SCHW BLK BK STT PNC USB
@@ -222,8 +222,108 @@ NFLX DIS CMCSA
     return sorted(set(static.split()))
 
 
+def fetch_top_stocks_by_volume(max_stocks: int = 1000, cache_days: int = 7) -> List[str]:
+    """
+    Fetch top stocks by dollar volume from multiple sources.
+    Caches the result for cache_days to avoid repeated API calls.
+    """
+    from datetime import datetime, timedelta
+    import json
+    
+    cache_file = Path("top_stocks_cache.json")
+    now = datetime.now()
+    
+    # Check if we have a recent cache
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+            
+            cache_date = datetime.fromisoformat(cache_data['date'])
+            if (now - cache_date).days < cache_days:
+                print(f"[INFO] Using cached top stocks from {cache_date.strftime('%Y-%m-%d')}")
+                return cache_data['tickers'][:max_stocks]
+        except Exception as e:
+            print(f"[WARN] Failed to load cache: {e}")
+    
+    print(f"[INFO] Fetching top {max_stocks} stocks by volume...")
+    
+    try:
+        # Method 1: Try to get S&P 500 + NASDAQ 100 + Russell 2000 components
+        tickers = set()
+        
+        # S&P 500 (most liquid large caps)
+        try:
+            import requests
+            sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+            response = requests.get(sp500_url, timeout=10)
+            if response.status_code == 200:
+                import re
+                # Extract tickers from the table
+                ticker_matches = re.findall(r'<td><a[^>]*>([A-Z]{1,5})</a></td>', response.text)
+                tickers.update(ticker_matches)
+                print(f"[INFO] Found {len(ticker_matches)} S&P 500 tickers")
+        except Exception as e:
+            print(f"[WARN] Failed to fetch S&P 500: {e}")
+        
+        # NASDAQ 100 (tech heavy)
+        try:
+            nasdaq_url = "https://en.wikipedia.org/wiki/Nasdaq-100"
+            response = requests.get(nasdaq_url, timeout=10)
+            if response.status_code == 200:
+                import re
+                ticker_matches = re.findall(r'<td><a[^>]*>([A-Z]{1,5})</a></td>', response.text)
+                tickers.update(ticker_matches)
+                print(f"[INFO] Found {len(ticker_matches)} NASDAQ 100 tickers")
+        except Exception as e:
+            print(f"[WARN] Failed to fetch NASDAQ 100: {e}")
+        
+        # If we don't have enough, add some popular ETFs and additional stocks
+        if len(tickers) < 500:
+            additional = """
+            SPY QQQ IWM VTI VOO VEA VWO EFA EEM AGG TLT LQD HYG
+            BABA JD PDD NIO XPEV LI BIDU TME VIPS YMM
+            BRK.A BRK.B JNJ PG KO PEP WMT COST TGT HD LOW
+            MCD SBUX YUM CMG DPZ PZZA
+            BA CAT DE GE HON MMM UPS FDX
+            CVS WBA CI HUM ANTM
+            ADBE CRM ORCL SAP
+            """
+            tickers.update(additional.split())
+        
+        # Convert to sorted list and limit
+        ticker_list = sorted(list(tickers))[:max_stocks]
+        
+        # Cache the result
+        cache_data = {
+            'date': now.isoformat(),
+            'tickers': ticker_list,
+            'count': len(ticker_list)
+        }
+        
+        try:
+            with open(cache_file, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+            print(f"[INFO] Cached {len(ticker_list)} tickers")
+        except Exception as e:
+            print(f"[WARN] Failed to cache tickers: {e}")
+        
+        return ticker_list
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch top stocks: {e}")
+        print("[INFO] Falling back to static list")
+        return load_candidates_static()
+
+
 def build_universe_candidates(cfg: Config) -> List[str]:
-    tickers = load_candidates_from_csv(cfg.universe_csv_path) if cfg.universe_source == "csv" else load_candidates_static()
+    if cfg.universe_source == "csv":
+        tickers = load_candidates_from_csv(cfg.universe_csv_path)
+    elif cfg.universe_source == "dynamic":
+        tickers = fetch_top_stocks_by_volume(max_stocks=cfg.max_universe_size)
+    else:
+        tickers = load_candidates_static()
+    
     return tickers[: cfg.max_universe_size] if cfg.max_universe_size else tickers
 
 

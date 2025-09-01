@@ -35,21 +35,21 @@ class RunConfig:
     interval: str = "1d"           # '1d' or '1h' (paper bot expects '1d')
     chunk_size: int = 180
     min_price: float = 5.0
-    max_price: float = 1500.0
-    min_dollar_vol: float = 5_000_000
+    max_price: float = 3000.0
+    min_dollar_vol: float = 1_000_000  # Lowered to 1M to include more stocks
     lookback_days: int = 70
-    max_trades_per_day: int = 10   # safety so we don't blast too many symbols
+    max_trades_per_day: int = 50   # Increased to allow more trades per day
     long_only: bool = True         # set False to allow shorts (paper supports it)
     holding_days: int = 5          # exit after this many trading days
 
     # Sizing
-    max_alloc_per_trade: float = 0.10  # % of equity per trade
-    max_portfolio_day_cap: float = 0.50  # max % equity used for all new trades today
+    max_alloc_per_trade: float = 0.40  # % of equity per trade
+    max_portfolio_day_cap: float = 0.90  # max % equity used for all new trades today
 
     # Universe
     use_csv_universe: bool = False
     universe_csv_path: str = "tickers.csv"
-    max_universe_size: int = 150
+    max_universe_size: int = 1000  # Scan top 1000 stocks
 
     # Files
     state_path: Path = Path("paper_state.json")
@@ -166,7 +166,9 @@ def run_once(cfg: RunConfig) -> dict:
         col = "ticker" if "ticker" in candidates.columns else candidates.columns[0]
         candidates = candidates[col].astype(str).str.upper().str.strip().tolist()
     else:
-        candidates = build_universe_candidates(bt)
+        # Use dynamic universe fetching
+        from backtest_yolo_events import fetch_top_stocks_by_volume
+        candidates = fetch_top_stocks_by_volume(max_stocks=cfg.max_universe_size)
 
     if cfg.max_universe_size:
         candidates = candidates[: cfg.max_universe_size]
