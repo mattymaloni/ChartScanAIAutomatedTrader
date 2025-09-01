@@ -1,0 +1,825 @@
+# backtest_yolo_events.py
+from __future__ import annotations
+
+import json
+import logging
+import math
+import os
+from dataclasses import dataclass, asdict, field
+from datetime import datetime
+from io import BytesIO
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
+from PIL import Image
+from tqdm.auto import tqdm
+
+# plotting / image
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+
+# accel / model
+import torch
+from ultralytics import YOLO
+
+
+# ============================== logging / utils ==============================
+
+def get_logger(name: str = "yolo_backtest", level: int = logging.INFO) -> logging.Logger:
+    logger = logging.getLogger(name)
+    if logger.handlers:
+        return logger
+    logger.setLevel(level)
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    logger.addHandler(h)
+    return logger
+
+
+def seed_all(seed: int = 42) -> None:
+    np.random.seed(seed)
+    try:
+        import random
+        random.seed(seed)
+    except Exception:
+        pass
+    if torch.cuda.is_available():
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
+
+# ============================== config ==============================
+
+@dataclass(frozen=True)
+class Config:
+    # --- runtime / device ---
+    seed: int = 42
+    device: str = field(default_factory=lambda:
+                        "mps" if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available()
+                        else ("cuda" if torch.cuda.is_available() else "cpu"))
+
+    # --- model ---
+    model_path: str = "custom_yolov8.pt"
+    yolo_conf: float = 0.30
+    yolo_imgsz: int = 768
+
+    # --- universe ---
+    universe_source: str = "static"      # "static" | "csv"
+    universe_csv_path: str = "tickers.csv"
+    max_universe_size: int = 200
+
+    # --- universe filters ---
+    max_price: float = 1_500_000.0
+    min_price: float = 5.0
+    min_dollar_vol: float = 5e6
+    dollar_vol_lookback: int = 70
+
+    # --- test selection ---
+    interval: str = "1d"                 # "1d" or "1h" ("1h" -> "60m")
+    chunk_size: int = 180
+    days: int = 60
+    stride: int = 1
+    holding_bars_list: Tuple[int, ...] = (1, 5, 10, 20)
+    auto_adjust: bool = False
+
+    # --- chart rendering (YOLO input) ---
+    figsize: Tuple[float, float] = (18, 6.5)
+    dpi: int = 100
+    mpf_style: str = "yahoo"
+    axis_off: bool = True
+    show_volume: bool = False
+    mpf_kwargs: dict = field(default_factory=lambda: {
+        "figratio": (16, 9),
+        "figscale": 1.5,
+        "update_width_config": {"candle_width": 0.6, "candle_linewidth": 0.4},
+        "warn_too_much_data": 181,
+    })
+
+    # --- trading controls ---
+    start_cash: float = 100_000.0
+    long_only: bool = False                 # False = allow shorts on "sell"
+    max_alloc_per_trade: float = 0.30
+    portfolio_day_cap: float = 1.00         # fraction of equity usable across ALL tickers per day
+    per_ticker_day_cap: Optional[float] = 0.30
+    one_position_per_ticker: bool = True
+
+    # --- persistence ---
+    save_dir: str = "runs"
+    save_trades: bool = True
+    save_summary: bool = True
+    save_detections: bool = False
+
+
+# ============================== data helpers ==============================
+
+FIELDS = ("Open", "High", "Low", "Close", "Adj Close", "Volume")
+
+
+def _normalize_yf_frame(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    """
+    Accepts a yfinance multi-index or flat dataframe and returns a flat OHLCV frame.
+    """
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    # If the outermost level contains field names (Open, High, ...) pull a column per field for the chosen ticker
+    if isinstance(df.columns, pd.MultiIndex):
+        lvl0 = df.columns.get_level_values(0)
+        lvl1 = df.columns.get_level_values(1)
+        fields_set = set(FIELDS)
+
+        # Case A: fields in level 0 (Open, High, ...) / tickers in level 1
+        if fields_set.issubset(set(lvl0)):
+            tickers = list(dict.fromkeys(lvl1))
+            chosen = ticker if ticker in lvl1 else tickers[0]
+            df = df.xs(chosen, axis=1, level=1, drop_level=True)
+        # Case B: fields in level 1 / tickers in level 0
+        elif fields_set.issubset(set(lvl1)):
+            tickers = list(dict.fromkeys(lvl0))
+            chosen = ticker if ticker in lvl0 else tickers[0]
+            df = df.xs(chosen, axis=1, level=0, drop_level=True)
+        else:
+            # Fallback: flatten columns
+            df = df.copy()
+            df.columns = ["_".join(map(str, c)).strip() for c in df.columns]
+
+    # Standardize column names
+    rename = {}
+    for c in df.columns:
+        s = str(c).lower()
+        if s.startswith("adj close") or s == "close":
+            rename[c] = "Close"
+        elif s.startswith("open"):
+            rename[c] = "Open"
+        elif s.startswith("high"):
+            rename[c] = "High"
+        elif s.startswith("low"):
+            rename[c] = "Low"
+        elif s.startswith("volume"):
+            rename[c] = "Volume"
+
+    if rename:
+        df = df.rename(columns=rename)
+
+    # Drop dup columns and keep only needed ones
+    if df.columns.duplicated().any():
+        df = df.loc[:, ~df.columns.duplicated()].copy()
+    keep = [c for c in ("Open", "High", "Low", "Close", "Volume") if c in df.columns]
+    if not keep:
+        return pd.DataFrame()
+
+    out = df[keep].copy()
+
+    # Coerce numeric + drop NaNs in OHLC
+    for c in ("Open", "High", "Low", "Close"):
+        if c in out.columns:
+            out[c] = pd.to_numeric(out[c], errors="coerce")
+    out = out.dropna(subset=[c for c in ("Open", "High", "Low", "Close") if c in out.columns])
+
+    # Index to tz-naive datetime and sort
+    out.index = pd.to_datetime(out.index)
+    if getattr(out.index, "tz", None) is not None:
+        out.index = out.index.tz_convert(None)
+    return out.sort_index()
+
+
+def _compute_fetch_period_days(cfg: Config) -> int:
+    """
+    History needed = chunk_size + days windows + max holding horizon (+ small headroom).
+    Convert trading bars to calendar days (~252 trading days/year) + 10% cushion.
+    """
+    h_max = max(cfg.holding_bars_list) if cfg.holding_bars_list else 1
+    required_trading_bars = cfg.chunk_size + cfg.days + h_max + 2
+    calendar_days = math.ceil(required_trading_bars * (365.0 / 252.0))
+    return max(math.ceil(calendar_days * 1.10), 30)
+
+
+def load_candidates_from_csv(path: str) -> List[str]:
+    df = pd.read_csv(path)
+    col = "ticker" if "ticker" in df.columns else df.columns[0]
+    tickers = df[col].astype(str).str.upper().str.strip()
+    return sorted({t for t in tickers if t and t.isalnum()})
+
+
+def load_candidates_static() -> List[str]:
+    # Keep your original static list; truncated here for brevity. Add/trim as you like.
+    static = """
+AAPL MSFT GOOGL AMZN META NVDA TSLA AVGO ORCL INTC AMD MU QCOM TXN IBM CRM NOW
+JPM BAC WFC C GS MS SCHW BLK BK STT PNC USB
+XOM CVX COP SLB HAL
+UNH JNJ PFE MRK ABBV TMO DHR ABT
+PG KO PEP COST WMT TGT
+HD LOW NKE SBUX MCD YUM
+NEE DUK SO AEP EXC
+PLD AMT CCI EQIX DLR SPG O
+CSCO ANET DELL
+MA V PYPL
+NFLX DIS CMCSA
+"""
+    return sorted(set(static.split()))
+
+
+def build_universe_candidates(cfg: Config) -> List[str]:
+    tickers = load_candidates_from_csv(cfg.universe_csv_path) if cfg.universe_source == "csv" else load_candidates_static()
+    return tickers[: cfg.max_universe_size] if cfg.max_universe_size else tickers
+
+
+# ============================== screening / download ==============================
+
+def _extract_close_vol(df: pd.DataFrame) -> Tuple[Optional[pd.Series], Optional[pd.Series]]:
+    if df is None or df.empty:
+        return None, None
+    close = df.get("Close")
+    vol = df.get("Volume")
+    if close is None or vol is None:
+        return None, None
+    close = pd.to_numeric(close, errors="coerce").dropna()
+    vol = pd.to_numeric(vol.reindex(close.index), errors="coerce").fillna(0)
+    return close, vol
+
+
+def screen_by_price_and_liquidity(
+    tickers: List[str],
+    *,
+    min_price: float,
+    max_price: float,
+    min_dollar_vol: float,
+    lookback_days: int,
+    batch_size: int = 180,
+    logger: Optional[logging.Logger] = None,
+) -> List[str]:
+    if not tickers:
+        return []
+    log = logger or get_logger()
+
+    passed: List[str] = []
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i:i + batch_size]
+        data = yf.download(
+            tickers=batch,
+            period=f"{lookback_days + 10}d",
+            interval="1d",
+            auto_adjust=False,
+            actions=False,
+            progress=False,
+            group_by="ticker",
+            threads=True,
+        )
+        for t in batch:
+            try:
+                df_t = data[t] if isinstance(data.columns, pd.MultiIndex) and t in data.columns.get_level_values(0) \
+                    else data.xs(t, axis=1, level=0, drop_level=False)
+            except Exception:
+                continue
+            df_t = _normalize_yf_frame(df_t, t)
+            close, vol = _extract_close_vol(df_t)
+            if close is None or vol is None or len(close) < lookback_days:
+                continue
+            last_px = float(close.iloc[-1])
+            if not (min_price <= last_px <= max_price):
+                continue
+            dv = (close * vol).tail(lookback_days).mean()
+            if float(dv) >= min_dollar_vol:
+                passed.append(t)
+
+    out = sorted(set(passed))
+    log.info("Screened %d/%d tickers (price %.2f–%.2f, avg $%s/day over %dd).",
+             len(out), len(tickers), min_price, max_price, f"{min_dollar_vol:,.0f}", lookback_days)
+    return out
+
+
+def download_prices_batched(
+    tickers: List[str],
+    cfg: Config,
+    batch_size: int = 180,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Download only the needed history based on chunk_size + days (+ cushion).
+    """
+    iv = "60m" if cfg.interval == "1h" else cfg.interval
+    period_days = _compute_fetch_period_days(cfg)
+    # yfinance restricts very short intervals to ~60 days; for our intervals this mapping is OK.
+    period = f"{period_days}d"
+
+    out: Dict[str, pd.DataFrame] = {}
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i:i + batch_size]
+        raw = yf.download(
+            tickers=batch,
+            period=period,
+            interval=iv,
+            auto_adjust=cfg.auto_adjust,
+            actions=False,
+            progress=False,
+            group_by="ticker",
+            threads=True,
+        )
+        for t in batch:
+            try:
+                df_t = raw[t] if isinstance(raw.columns, pd.MultiIndex) and t in raw.columns.get_level_values(0) \
+                    else raw.xs(t, axis=1, level=0, drop_level=False)
+            except Exception:
+                continue
+            clean = _normalize_yf_frame(df_t, t)
+            if not clean.empty:
+                out[t] = clean
+    return out
+
+
+# ============================== chart & model ==============================
+
+def render_window_png(price_df: pd.DataFrame, start: int, cfg: Config) -> Optional[dict]:
+    """
+    Render a chunk_size-bar candlestick window starting at `start` from `price_df`.
+    Returns a dict with PNG buffer and the window index for mapping.
+    """
+    end = start + cfg.chunk_size
+    window_df = price_df.iloc[start:end]
+    if window_df.empty or len(window_df) < cfg.chunk_size:
+        return None
+
+    fig, _ = mpf.plot(
+        window_df,
+        type="candle",
+        style=cfg.mpf_style,
+        axisoff=cfg.axis_off,
+        figsize=cfg.figsize,
+        returnfig=True,
+        **cfg.mpf_kwargs,
+    )
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    buf = BytesIO()
+    fig.savefig(buf, format="png", dpi=cfg.dpi, bbox_inches="tight", pad_inches=0)
+    buf.seek(0)
+    plt.close(fig)
+    return {"buffer": buf, "window_index": window_df.index}
+
+
+def yolo_predict_png(png_buffer: BytesIO, model: YOLO, cfg: Config):
+    im = Image.open(png_buffer).convert("RGB")
+    arr = np.array(im)
+    res = model.predict(arr, conf=cfg.yolo_conf, imgsz=cfg.yolo_imgsz, verbose=False, device=cfg.device)
+    return res[0]
+
+
+def _extract_signal_and_conf(box, names: Dict[int, str]) -> Tuple[Optional[str], Optional[float]]:
+    cls_id = int(box.cls[0].item()) if getattr(box, "cls", None) is not None else None
+    name_l = str(names.get(cls_id, "")).strip().lower() if cls_id is not None else ""
+    if "buy" in name_l:
+        sig = "buy"
+    elif "sell" in name_l or "seel" in name_l:  # tolerate occasional misspelling
+        sig = "sell"
+    else:
+        sig = None
+    conf = float(box.conf[0].item()) if getattr(box, "conf", None) is not None else None
+    return sig, conf
+
+
+def map_detections_to_bars(
+    ticker: str,
+    window_index: pd.DatetimeIndex,
+    result,
+    names: Dict[int, str],
+) -> List[dict]:
+    """
+    Map YOLO boxes -> candle index -> timestamp. We normalize x centers across detected boxes
+    (avoid margins). Only mapping; filtering to right edge happens later.
+    """
+    boxes = getattr(result, "boxes", None)
+    n = len(window_index)
+    if boxes is None or n == 0:
+        return []
+
+    xs: List[float] = []
+    for b in boxes:
+        try:
+            xs.append(float(b.xywh[0][0]))
+        except Exception:
+            pass
+    if not xs:
+        return []
+
+    xmin, xmax = min(xs), max(xs)
+    span = max(xmax - xmin, 1e-6)
+
+    rows = []
+    for b in boxes:
+        try:
+            x, _, w, _ = b.xywh[0].tolist()
+        except Exception:
+            continue
+
+        frac = (x - xmin) / span  # 0..1 across actual plotted candles
+        idx = int(np.clip(round(frac * (n - 1)), 0, n - 1))
+
+        sig, conf = _extract_signal_and_conf(b, names)
+        rows.append({
+            "ticker": ticker,
+            "event_time": window_index[idx],
+            "bar_index": idx,
+            "signal": sig,
+            "confidence": float(conf) if conf is not None else None,
+            "x_center_px": float(x),
+            "width_px": float(w),
+        })
+    return rows
+
+
+# ============================== backtest core ==============================
+
+def _build_window_starts(prices_by_ticker: Dict[str, pd.DataFrame], cfg: Config, log: logging.Logger) -> Dict[str, List[int]]:
+    starts_by_ticker: Dict[str, List[int]] = {}
+    for t, px in prices_by_ticker.items():
+        n = len(px)
+        need = cfg.chunk_size + (max(cfg.holding_bars_list) if cfg.holding_bars_list else 1) + 1
+        if n < need:
+            log.warning("Skipping %s: not enough bars (%d < %d).", t, n, need)
+            continue
+        last_start = n - cfg.chunk_size
+        num = min(cfg.days, last_start + 1)
+        first_start = max(0, last_start - (num - 1))
+        starts_by_ticker[t] = list(range(first_start, last_start + 1, cfg.stride))
+    return starts_by_ticker
+
+
+def _dedupe_detections(det_df: pd.DataFrame, long_only: bool) -> pd.DataFrame:
+    if det_df.empty:
+        return det_df
+    if long_only:
+        det_df = det_df[det_df["signal"] == "buy"].copy()
+
+    det_df["event_time"] = pd.to_datetime(det_df["event_time"])
+    det_df = (
+        det_df.sort_values(["confidence"], ascending=False)
+              .drop_duplicates(subset=["ticker", "event_time", "signal"], keep="first")
+              .sort_values(["event_time", "ticker"])
+              .reset_index(drop=True)
+    )
+    return det_df
+
+
+def _prepare_orders_for_horizon(
+    det_df: pd.DataFrame, prices_by_ticker: Dict[str, pd.DataFrame], H: int
+) -> List[dict]:
+    orders: List[dict] = []
+    for _, r in det_df.iterrows():
+        tkr = r["ticker"]
+        sig = r["signal"]
+        conf = float(r.get("confidence", 0.0) or 0.0)
+        px = prices_by_ticker.get(tkr)
+        if px is None or px.empty or "Close" not in px.columns:
+            continue
+        t = pd.Timestamp(r["event_time"])
+
+        if t in px.index:
+            pos = px.index.get_loc(t)
+            if isinstance(pos, slice):
+                pos = pos.start
+        else:
+            pos = px.index.searchsorted(t, side="right") - 1
+            if pos < 0:
+                continue
+
+        entry_pos = pos + 1
+        exit_pos = entry_pos + H
+        if exit_pos >= len(px.index):
+            continue
+
+        entry_time = px.index[entry_pos]
+        exit_time = px.index[exit_pos]
+        entry_px = float(px.iloc[entry_pos]["Close"])
+        exit_px = float(px.iloc[exit_pos]["Close"])
+
+        orders.append({
+            "ticker": tkr,
+            "signal": sig,
+            "confidence": conf,
+            "entry_time": entry_time,
+            "exit_time": exit_time,
+            "entry_price": entry_px,
+            "exit_price": exit_px,
+        })
+    return orders
+
+
+def _run_timeline(
+    orders: List[dict],
+    prices_by_ticker: Dict[str, pd.DataFrame],
+    cfg: Config,
+) -> Tuple[float, pd.DataFrame]:
+    """
+    Simulate chronologically: close exits due at t, then open entries at t.
+    Enforce caps + optional one position per ticker.
+    """
+    equity = float(cfg.start_cash)
+    executed: List[dict] = []
+
+    # Build event timeline
+    from collections import defaultdict
+
+    entries_by_t, exits_by_t = {}, {}
+    for o in orders:
+        entries_by_t.setdefault(o["entry_time"], []).append(o)
+        exits_by_t.setdefault(o["exit_time"], []).append(o)
+
+    day_base_equity: Dict[pd.Timestamp, float] = {}
+    day_port_notional = defaultdict(float)
+    day_tkr_notional = defaultdict(float)
+    open_pos_keys = set()  # track (ticker, entry_time)
+
+    all_times = sorted(set(entries_by_t.keys()) | set(exits_by_t.keys()))
+
+    for t in all_times:
+        day_key = pd.Timestamp(t).normalize()
+
+        # 1) Close exits due at t
+        for o in exits_by_t.get(t, []):
+            key = (o["ticker"], o["entry_time"])
+            if cfg.one_position_per_ticker and key not in open_pos_keys:
+                continue  # never opened (budget may have blocked it)
+            if o["signal"] == "buy":
+                pnl = (o["exit_price"] - o["entry_price"]) * o["_shares"]
+            else:
+                pnl = (o["entry_price"] - o["exit_price"]) * o["_shares"]
+            equity += o["_notional"] + pnl
+            open_pos_keys.discard(key)
+
+        # 2) Open entries at t (greedy by confidence)
+        if t in entries_by_t:
+            if day_key not in day_base_equity:
+                day_base_equity[day_key] = equity
+
+            for o in sorted(entries_by_t[t], key=lambda z: z["confidence"], reverse=True):
+                tkr = o["ticker"]
+                if cfg.one_position_per_ticker and any(k[0] == tkr for k in open_pos_keys):
+                    continue  # already holding this ticker
+
+                # caps
+                per_trade_cash_cap = equity * cfg.max_alloc_per_trade
+                remaining_port_cap = float("inf")
+                if cfg.portfolio_day_cap is not None:
+                    day_cap = cfg.portfolio_day_cap * day_base_equity[day_key]
+                    used = day_port_notional[day_key]
+                    remaining_port_cap = max(0.0, day_cap - used)
+
+                remaining_tkr_cap = float("inf")
+                if cfg.per_ticker_day_cap is not None:
+                    tkr_cap = cfg.per_ticker_day_cap * day_base_equity[day_key]
+                    used_tkr = day_tkr_notional[(day_key, tkr)]
+                    remaining_tkr_cap = max(0.0, tkr_cap - used_tkr)
+
+                spend_cap = min(per_trade_cash_cap, remaining_port_cap, remaining_tkr_cap)
+                px = max(o["entry_price"], 1e-9)
+                shares = math.floor(min(spend_cap, equity) / px)
+                if shares < 1:
+                    continue
+
+                notional = shares * px
+                if notional > equity:
+                    continue
+
+                equity -= notional
+                o["_shares"] = shares
+                o["_notional"] = notional
+                open_pos_keys.add((tkr, o["entry_time"]))
+
+                if cfg.portfolio_day_cap is not None:
+                    day_port_notional[day_key] += notional
+                if cfg.per_ticker_day_cap is not None:
+                    day_tkr_notional[(day_key, tkr)] += notional
+
+                if o["signal"] == "buy":
+                    pnl = (o["exit_price"] - o["entry_price"]) * shares
+                    ret = o["exit_price"] / o["entry_price"] - 1.0
+                    side = "long"
+                else:
+                    pnl = (o["entry_price"] - o["exit_price"]) * shares
+                    ret = o["entry_price"] / o["exit_price"] - 1.0
+                    side = "short"
+
+                executed.append({
+                    "ticker": tkr,
+                    "side": side,
+                    "entry_time": o["entry_time"],
+                    "exit_time": o["exit_time"],
+                    "entry_price": o["entry_price"],
+                    "exit_price": o["exit_price"],
+                    "shares": shares,
+                    "pnl": pnl,
+                    "return": ret,
+                    "signal_conf": float(o.get("confidence", 0.0) or 0.0),
+                    "holding_bars": (o.get("holding_bars") or 0),  # optional; may be set by caller
+                })
+
+    trades_df = pd.DataFrame(executed).sort_values("entry_time").reset_index(drop=True)
+    return equity, trades_df
+
+
+def single_test_multi_horizons(
+    prices_by_ticker: Dict[str, pd.DataFrame],
+    model: YOLO,
+    cfg: Config,
+    logger: Optional[logging.Logger] = None,
+) -> dict:
+    log = logger or get_logger()
+    names = {int(k): str(v) for k, v in getattr(model, "names", {}).items()}
+
+    # ---- Build window starts ----
+    starts_by_ticker = _build_window_starts(prices_by_ticker, cfg, log)
+    total_windows = sum(len(v) for v in starts_by_ticker.values())
+    if total_windows == 0:
+        return {"summaries": {}, "trades": {}, "detections": {"total": 0, "eligible": {h: 0 for h in cfg.holding_bars_list}}, "all_detections": pd.DataFrame()}
+
+    # ---- Collect right-edge detections ----
+    det_rows: List[dict] = []
+    with tqdm(total=total_windows, desc="Windows", unit="win", dynamic_ncols=True, mininterval=0.5) as pbar:
+        for tkr, px in starts_by_ticker.items():
+            pxt = prices_by_ticker[tkr]
+            for start in px:
+                chart = render_window_png(pxt, start, cfg)
+                if chart is None:
+                    pbar.update(1)
+                    continue
+                r0 = yolo_predict_png(chart["buffer"], model, cfg)
+                rows = map_detections_to_bars(tkr, chart["window_index"], r0, names)
+                if rows:
+                    last_bar = len(chart["window_index"]) - 1
+                    for r in rows:
+                        if r.get("signal") and int(r["bar_index"]) == last_bar:
+                            det_rows.append(r)
+                pbar.update(1)
+
+    det_df_all = pd.DataFrame(det_rows)
+    total_dets = int(len(det_df_all))
+    if det_df_all.empty:
+        empty = {
+            "summaries": {h: {"trades": 0, "final_cash": cfg.start_cash, "total_return": 0.0, "win_rate": None, "avg_return": None} for h in cfg.holding_bars_list},
+            "trades": {h: pd.DataFrame() for h in cfg.holding_bars_list},
+            "detections": {"total": total_dets, "eligible": {h: 0 for h in cfg.holding_bars_list}},
+            "all_detections": det_df_all,
+        }
+        return empty
+
+    det_df_all = _dedupe_detections(det_df_all, cfg.long_only)
+
+    out_summaries, out_trades, eligible_counts = {}, {}, {}
+
+    # ---- For each horizon, simulate chronologically ----
+    for H in cfg.holding_bars_list:
+        orders = _prepare_orders_for_horizon(det_df_all, prices_by_ticker, H)
+        if not orders:
+            out_summaries[H] = {"trades": 0, "final_cash": cfg.start_cash, "total_return": 0.0, "win_rate": None, "avg_return": None}
+            out_trades[H] = pd.DataFrame()
+            eligible_counts[H] = 0
+            continue
+
+        # tag horizon for reporting
+        for o in orders:
+            o["holding_bars"] = H
+
+        eligible_counts[H] = len(orders)
+        final_equity, trades_df = _run_timeline(orders, prices_by_ticker, cfg)
+
+        summary = {
+            "trades": int(len(trades_df)),
+            "final_cash": float(final_equity),
+            "total_return": float(final_equity / cfg.start_cash - 1.0) if cfg.start_cash else 0.0,
+            "win_rate": float((trades_df["return"] > 0).mean()) if not trades_df.empty else None,
+            "avg_return": float(trades_df["return"].mean()) if not trades_df.empty else None,
+        }
+        out_summaries[H] = summary
+        out_trades[H] = trades_df
+
+    return {
+        "summaries": out_summaries,
+        "trades": out_trades,
+        "detections": {"total": total_dets, "eligible": {h: len(out_trades[h]) for h in cfg.holding_bars_list}},
+        "all_detections": det_df_all,
+    }
+
+
+# ============================== persistence ==============================
+
+def save_results(res: dict, cfg: Config, log: Optional[logging.Logger] = None) -> Path:
+    """
+    Save trades per horizon, combined trades, detections (optional), summaries, and frozen config.
+    Returns the output directory path.
+    """
+    log = log or get_logger()
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    outdir = Path(cfg.save_dir) / f"single_test_{ts}"
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    # Save per-horizon & combined trades
+    if cfg.save_trades:
+        any_trades = False
+        frames = []
+        for H, df in (res.get("trades") or {}).items():
+            path = outdir / f"trades_H{H}.csv"
+            (df if isinstance(df, pd.DataFrame) else pd.DataFrame()).to_csv(path, index=False)
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                any_trades = True
+                frames.append(df.assign(holding_bars=H))
+        if any_trades:
+            pd.concat(frames, ignore_index=True).to_csv(outdir / "trades_all.csv", index=False)
+
+    if cfg.save_detections and "all_detections" in res:
+        (res["all_detections"] or pd.DataFrame()).to_csv(outdir / "detections.csv", index=False)
+
+    if cfg.save_summary:
+        with open(outdir / "summary.json", "w") as f:
+            json.dump(res.get("summaries", {}), f, indent=2)
+
+    # freeze run config
+    with open(outdir / "config.json", "w") as f:
+        json.dump(asdict(cfg), f, indent=2)
+
+    # manifest (helps future reproducibility checks)
+    manifest = {
+        "timestamp": ts,
+        "device": cfg.device,
+        "interval": cfg.interval,
+        "chunk_size": cfg.chunk_size,
+        "days": cfg.days,
+        "holding_bars_list": cfg.holding_bars_list,
+        "long_only": cfg.long_only,
+        "start_cash": cfg.start_cash,
+    }
+    with open(outdir / "manifest.json", "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    log.info("Saved outputs to: %s", str(outdir))
+    return outdir
+
+
+# ============================== main ==============================
+
+def main(cfg: Config = Config()) -> None:
+    log = get_logger(level=logging.INFO)
+    log.info("Using device: %s", cfg.device)
+    seed_all(cfg.seed)
+
+    # 0) Sanity: model exists
+    if not os.path.exists(cfg.model_path):
+        log.error("MODEL_PATH not found: %s", cfg.model_path)
+        return
+
+    # 1) Load model
+    model = YOLO(cfg.model_path).to(cfg.device)
+
+    # 2) Build & screen universe
+    candidates = build_universe_candidates(cfg)
+    tickers = screen_by_price_and_liquidity(
+        candidates,
+        min_price=cfg.min_price,
+        max_price=cfg.max_price,
+        min_dollar_vol=cfg.min_dollar_vol,
+        lookback_days=cfg.dollar_vol_lookback,
+        logger=log,
+    )
+    if not tickers:
+        log.error("No tickers passed the screen.")
+        return
+
+    # 3) Download just what's needed
+    prices_by_ticker = download_prices_batched(tickers, cfg)
+    if not prices_by_ticker:
+        log.error("No price data downloaded.")
+        return
+
+    # 4) Run the single test
+    res = single_test_multi_horizons(prices_by_ticker, model, cfg, logger=log)
+    detc = res.get("detections", {"total": 0, "eligible": {h: 0 for h in cfg.holding_bars_list}})
+
+    # 5) Report (console)
+    log.info("=== Single Test — INTERVAL=%s, CHUNK=%d, last %d windows, start cash $%.0f, long_only=%s ===",
+             cfg.interval, cfg.chunk_size, cfg.days, cfg.start_cash, cfg.long_only)
+    log.info("Detections (right-edge only): %d total", detc["total"])
+    for H in cfg.holding_bars_list:
+        s = res["summaries"].get(H, {})
+        log.info("--- Hold %d bar(s) ---", H)
+        log.info("Executed trades: %s", s.get("trades", 0))
+        wr, ar = s.get("win_rate"), s.get("avg_return")
+        if wr is None:
+            log.info("Win Rate: NA | Avg Ret/Trade: NA")
+        else:
+            log.info("Win Rate: %.2f%% | Avg Ret/Trade: %.4f", wr * 100, ar or 0.0)
+        if "final_cash" in s and "total_return" in s:
+            log.info("Final Cash: $%.2f  Total Return: %.2f%%", s["final_cash"], s["total_return"] * 100)
+
+        td = res["trades"].get(H, pd.DataFrame())
+        if isinstance(td, pd.DataFrame) and not td.empty:
+            # Print last few without overwhelming logs
+            tail = td.tail(10)[["ticker", "side", "entry_time", "exit_time", "entry_price", "exit_price", "shares", "pnl", "signal_conf"]]
+            log.info("Recent trades (tail 10):\n%s", tail.to_string(index=False))
+
+    # 6) Persist
+    if cfg.save_trades or cfg.save_summary or (cfg.save_detections and "all_detections" in res):
+        save_results(res, cfg, log)
+
+
+if __name__ == "__main__":
+    main()

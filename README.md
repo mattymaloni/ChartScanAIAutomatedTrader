@@ -1,6 +1,25 @@
 # ChartScanAI
 <img src="images/chartscan.png" alt="ChartScanAI Logo" width="200"/>
 
+# Changes Made
+This is a backtester and automated paper trader built on top of the ChartScanAI model. These changes retain the original MIT liscense and are an educational experiment. 
+## ChartScanAI AutoTrader (Paper)
+
+- Scans a large US equities universe (top-N by dollar volume) with a YOLOv8 right-edge detector.
+- Places **paper** trades on Alpaca (or DRY RUNs if no keys).
+- Saves results into `daily_runs/YYYY-MM-DD/`.
+
+## Run in the cloud
+This repo includes a GitHub Action that runs weekday mornings around the US market open and commits artifacts back to the repo.
+
+## ChartScanAI Backtester
+- Simple backtester for a trading simulation based on a past period of time you choose.
+- Set your balance, time period, and more and evaluates how well the model would have done
+
+_Not financial advice._
+
+
+# Original App 
 
 ## Overview
 ChartScanAI is an advanced application designed for detecting patterns in stock and cryptocurrency charts using deep learning techniques. Inspired by the methodology detailed in the research article "[YOLO Object Recognition Algorithm and “Buy-Sell Decision” Model Over 2D Candlestick Charts](https://ieeexplore.ieee.org/document/9092995)" by Serdar Birogul, Günay Temür, and Utku Kose, this project extends their approach by implementing the model with YOLOv8 and integrating it into a user-friendly Streamlit app. This application aims to automate the process of chart pattern recognition, providing traders and analysts with a powerful tool for making informed decisions.
