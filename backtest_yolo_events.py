@@ -576,7 +576,7 @@ def screen_by_price_and_liquidity(
     max_price: float,
     min_dollar_vol: float,
     lookback_days: int,
-    batch_size: int = 50,  # Reduced batch size to avoid rate limits
+    batch_size: int = 20,  # Much smaller batch size to avoid rate limits
     logger: Optional[logging.Logger] = None,
 ) -> List[str]:
     if not tickers:
@@ -611,8 +611,13 @@ def screen_by_price_and_liquidity(
                     continue
                 else:
                     import time
-                    time.sleep(2 ** retry)  # Exponential backoff
+                    time.sleep(5 + (2 ** retry))  # Longer delays: 6s, 7s, 9s
                     continue
+        
+        # Add delay between batches to avoid rate limiting
+        if i + batch_size < len(tickers):  # Don't delay after the last batch
+            import time
+            time.sleep(2)  # 2 second delay between batches
         
         if data is None or data.empty:
             failed_downloads.extend(batch)
@@ -1094,7 +1099,7 @@ def scan_right_edge_signals(
                 if data is None or data.empty:
                     if retry < max_retries - 1:
                         import time
-                        time.sleep(1)
+                        time.sleep(3)  # Longer delay
                         continue
                     failed_scans.append(ticker)
                     break
@@ -1136,11 +1141,15 @@ def scan_right_edge_signals(
             except Exception as e:
                 if retry < max_retries - 1:
                     import time
-                    time.sleep(2 ** retry)
+                    time.sleep(5 + (2 ** retry))  # Longer delays: 6s, 7s, 9s
                     continue
                 log.warning(f"Error scanning {ticker}: {e}")
                 failed_scans.append(ticker)
                 break
+        
+        # Add small delay between stock scans to avoid rate limiting
+        import time
+        time.sleep(0.5)
     
     if failed_scans:
         log.warning(f"Failed to scan {len(failed_scans)} tickers")

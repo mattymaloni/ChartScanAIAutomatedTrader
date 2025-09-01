@@ -76,14 +76,14 @@ def _latest_close_price(symbol: str) -> Optional[float]:
             if df is None or df.empty:
                 if retry < max_retries - 1:
                     import time
-                    time.sleep(1)
+                    time.sleep(3)  # Longer delay
                     continue
                 return None
             return float(df["Close"].iloc[-1])
         except Exception as e:
             if retry < max_retries - 1:
                 import time
-                time.sleep(2 ** retry)  # Exponential backoff
+                time.sleep(5 + (2 ** retry))  # Longer delays: 6s, 7s, 9s
                 continue
             print(f"[WARN] Failed to get ticker '{symbol}' reason: {e}")
             return None
@@ -247,6 +247,10 @@ def run_once(cfg: RunConfig) -> dict:
             continue
 
         price = _latest_close_price(sym)
+        # Add small delay between price fetches to avoid rate limiting
+        import time
+        time.sleep(0.5)
+        
         per_trade_notional = equity * cfg.max_alloc_per_trade
         remaining_cap = max(0.0, day_cap_notional - used_notional)
         notional = min(per_trade_notional, remaining_cap)
