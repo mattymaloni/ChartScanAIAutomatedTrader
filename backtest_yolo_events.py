@@ -576,7 +576,7 @@ def screen_by_price_and_liquidity(
     max_price: float,
     min_dollar_vol: float,
     lookback_days: int,
-    batch_size: int = 20,  # Much smaller batch size to avoid rate limits
+    batch_size: int = 5,  # Very small batch size to avoid rate limits
     logger: Optional[logging.Logger] = None,
 ) -> List[str]:
     if not tickers:
@@ -617,7 +617,7 @@ def screen_by_price_and_liquidity(
         # Add delay between batches to avoid rate limiting
         if i + batch_size < len(tickers):  # Don't delay after the last batch
             import time
-            time.sleep(2)  # 2 second delay between batches
+            time.sleep(5)  # 5 second delay between batches
         
         if data is None or data.empty:
             failed_downloads.extend(batch)
@@ -1147,9 +1147,9 @@ def scan_right_edge_signals(
                 failed_scans.append(ticker)
                 break
         
-        # Add small delay between stock scans to avoid rate limiting
+        # Add delay between stock scans to avoid rate limiting
         import time
-        time.sleep(0.5)
+        time.sleep(2)  # 2 second delay between stock scans
     
     if failed_scans:
         log.warning(f"Failed to scan {len(failed_scans)} tickers")

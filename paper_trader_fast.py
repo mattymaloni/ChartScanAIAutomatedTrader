@@ -68,6 +68,18 @@ def _load_state(path: Path) -> dict:
 def _save_state(path: Path, state: dict) -> None:
     path.write_text(json.dumps(state, indent=2, default=str))
 
+def _clear_yfinance_cache():
+    """Clear yfinance cache to prevent corrupted data issues"""
+    try:
+        import shutil
+        import os
+        cache_dir = os.path.expanduser("~/Library/Caches/py-yfinance")
+        if os.path.exists(cache_dir):
+            shutil.rmtree(cache_dir)
+            print("[INFO] Cleared yfinance cache")
+    except Exception as e:
+        print(f"[WARN] Failed to clear yfinance cache: {e}")
+
 def _latest_close_price(symbol: str) -> Optional[float]:
     max_retries = 3
     for retry in range(max_retries):
@@ -79,7 +91,44 @@ def _latest_close_price(symbol: str) -> Optional[float]:
                     time.sleep(3)  # Longer delay
                     continue
                 return None
-            return float(df["Close"].iloc[-1])
+            
+            # Handle MultiIndex columns (when downloading single ticker)
+            import pandas as pd
+            if isinstance(df.columns, pd.MultiIndex):
+                # For single ticker, columns are like ('Close', 'AAPL')
+                close_col = None
+                for col in df.columns:
+                    if col[0] == 'Close':  # First level is 'Close'
+                        close_col = col
+                        break
+                if close_col is None:
+                    if retry < max_retries - 1:
+                        import time
+                        time.sleep(3)
+                        continue
+                    return None
+                close_series = df[close_col]
+            else:
+                # Handle simple columns
+                if "Close" not in df.columns:
+                    if retry < max_retries - 1:
+                        import time
+                        time.sleep(3)
+                        continue
+                    return None
+                close_series = df["Close"]
+                
+            if close_series.empty or close_series.isna().all():
+                if retry < max_retries - 1:
+                    import time
+                    time.sleep(3)
+                    continue
+                return None
+                
+            # Get the last valid close price
+            last_close = close_series.dropna().iloc[-1]
+            return float(last_close)
+            
         except Exception as e:
             if retry < max_retries - 1:
                 import time
@@ -126,6 +175,9 @@ def run_once(cfg: RunConfig) -> dict:
     3) Place paper orders for up to N trades
     4) Save artifacts (signals, orders, positions) and persist state
     """
+    # Clear yfinance cache to prevent corrupted data issues
+    _clear_yfinance_cache()
+    
     # Prep
     try:
         client = _alpaca_client_from_env()
@@ -247,9 +299,9 @@ def run_once(cfg: RunConfig) -> dict:
             continue
 
         price = _latest_close_price(sym)
-        # Add small delay between price fetches to avoid rate limiting
+        # Add delay between price fetches to avoid rate limiting
         import time
-        time.sleep(0.5)
+        time.sleep(2)  # 2 second delay between price fetches
         
         per_trade_notional = equity * cfg.max_alloc_per_trade
         remaining_cap = max(0.0, day_cap_notional - used_notional)
