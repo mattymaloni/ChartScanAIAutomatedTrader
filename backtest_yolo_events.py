@@ -218,8 +218,26 @@ PLD AMT CCI EQIX DLR SPG O
 CSCO ANET DELL
 MA V PYPL
 NFLX DIS CMCSA
+SPY QQQ IWM VTI VOO
 """
     return sorted(set(static.split()))
+
+
+def get_reliable_stock_list() -> List[str]:
+    """Get a smaller, more reliable list of liquid stocks for when API issues occur."""
+    reliable = """
+AAPL MSFT GOOGL AMZN META NVDA TSLA AVGO ORCL INTC AMD
+JPM BAC WFC C GS MS
+XOM CVX COP
+UNH JNJ PFE MRK ABBV
+PG KO PEP COST WMT
+HD LOW NKE
+CSCO
+MA V
+NFLX DIS
+SPY QQQ IWM VTI VOO
+"""
+    return sorted(set(reliable.split()))
 
 
 def fetch_top_stocks_by_volume(max_stocks: int = 1000, cache_days: int = 7) -> List[str]:
@@ -348,7 +366,7 @@ def screen_by_price_and_liquidity(
     max_price: float,
     min_dollar_vol: float,
     lookback_days: int,
-    batch_size: int = 180,
+    batch_size: int = 50,  # Reduced batch size to avoid rate limits
     logger: Optional[logging.Logger] = None,
 ) -> List[str]:
     if not tickers:
@@ -356,27 +374,51 @@ def screen_by_price_and_liquidity(
     log = logger or get_logger()
 
     passed: List[str] = []
+    failed_downloads = []
+    
     for i in range(0, len(tickers), batch_size):
         batch = tickers[i:i + batch_size]
-        data = yf.download(
-            tickers=batch,
-            period=f"{lookback_days + 10}d",
-            interval="1d",
-            auto_adjust=False,
-            actions=False,
-            progress=False,
-            group_by="ticker",
-            threads=True,
-        )
+        
+        # Add retry logic for failed downloads
+        max_retries = 3
+        for retry in range(max_retries):
+            try:
+                data = yf.download(
+                    tickers=batch,
+                    period=f"{lookback_days + 10}d",
+                    interval="1d",
+                    auto_adjust=False,
+                    actions=False,
+                    progress=False,
+                    group_by="ticker",
+                    threads=False,  # Disable threading to avoid database locks
+                )
+                break  # Success, exit retry loop
+            except Exception as e:
+                if retry == max_retries - 1:
+                    log.warning(f"Failed to download batch after {max_retries} retries: {e}")
+                    failed_downloads.extend(batch)
+                    continue
+                else:
+                    import time
+                    time.sleep(2 ** retry)  # Exponential backoff
+                    continue
+        
+        if data is None or data.empty:
+            failed_downloads.extend(batch)
+            continue
+            
         for t in batch:
             try:
                 df_t = data[t] if isinstance(data.columns, pd.MultiIndex) and t in data.columns.get_level_values(0) \
                     else data.xs(t, axis=1, level=0, drop_level=False)
             except Exception:
+                failed_downloads.append(t)
                 continue
             df_t = _normalize_yf_frame(df_t, t)
             close, vol = _extract_close_vol(df_t)
             if close is None or vol is None or len(close) < lookback_days:
+                failed_downloads.append(t)
                 continue
             last_px = float(close.iloc[-1])
             if not (min_price <= last_px <= max_price):
@@ -384,6 +426,11 @@ def screen_by_price_and_liquidity(
             dv = (close * vol).tail(lookback_days).mean()
             if float(dv) >= min_dollar_vol:
                 passed.append(t)
+
+    if failed_downloads:
+        log.warning(f"Failed downloads: {len(failed_downloads)} tickers")
+        if len(failed_downloads) <= 10:
+            log.warning(f"Failed tickers: {failed_downloads}")
 
     out = sorted(set(passed))
     log.info("Screened %d/%d tickers (price %.2f–%.2f, avg $%s/day over %dd).",
@@ -819,53 +866,76 @@ def scan_right_edge_signals(
     names = {int(k): str(v) for k, v in getattr(model, "names", {}).items()}
     
     rows = []
+    failed_scans = []
+    
     for ticker in tqdm(tickers, desc="Scanning signals", unit="ticker"):
-        try:
-            # Download recent data
-            iv = "60m" if interval == "1h" else interval
-            if interval == "1h":
-                end_date = datetime.now()
-                start_date = end_date - timedelta(days=730)
-                data = yf.download(ticker, interval=iv, start=start_date, end=end_date, progress=False, auto_adjust=False)
-            else:
-                data = yf.download(ticker, interval=iv, period="max", progress=False, auto_adjust=False)
-            
-            if data is None or data.empty:
-                continue
+        max_retries = 2
+        for retry in range(max_retries):
+            try:
+                # Download recent data
+                iv = "60m" if interval == "1h" else interval
+                if interval == "1h":
+                    end_date = datetime.now()
+                    start_date = end_date - timedelta(days=730)
+                    data = yf.download(ticker, interval=iv, start=start_date, end=end_date, progress=False, auto_adjust=False)
+                else:
+                    data = yf.download(ticker, interval=iv, period="max", progress=False, auto_adjust=False)
                 
-            data = _normalize_yf_frame(data, ticker)
-            if data.empty or len(data) < chunk_size:
-                continue
-                
-            # Get the latest window
-            window = data.iloc[-chunk_size:].copy()
-            if window.empty:
-                continue
-                
-            # Render chart
-            chart = render_window_png(window, 0, cfg)
-            if chart is None:
-                continue
-                
-            # Run YOLO prediction
-            result = yolo_predict_png(chart["buffer"], model, cfg)
-            
-            # Map detections to bars and filter for right-edge only
-            detections = map_detections_to_bars(ticker, chart["window_index"], result, names)
-            last_bar = len(chart["window_index"]) - 1
-            
-            for det in detections:
-                if det.get("signal") and int(det["bar_index"]) == last_bar:
-                    rows.append({
-                        "ticker": ticker,
-                        "event_time": det["event_time"],
-                        "signal": det["signal"],
-                        "confidence": det["confidence"],
-                    })
+                if data is None or data.empty:
+                    if retry < max_retries - 1:
+                        import time
+                        time.sleep(1)
+                        continue
+                    failed_scans.append(ticker)
+                    break
                     
-        except Exception as e:
-            log.warning(f"Error scanning {ticker}: {e}")
-            continue
+                data = _normalize_yf_frame(data, ticker)
+                if data.empty or len(data) < chunk_size:
+                    failed_scans.append(ticker)
+                    break
+                    
+                # Get the latest window
+                window = data.iloc[-chunk_size:].copy()
+                if window.empty:
+                    failed_scans.append(ticker)
+                    break
+                    
+                # Render chart
+                chart = render_window_png(window, 0, cfg)
+                if chart is None:
+                    failed_scans.append(ticker)
+                    break
+                    
+                # Run YOLO prediction
+                result = yolo_predict_png(chart["buffer"], model, cfg)
+                
+                # Map detections to bars and filter for right-edge only
+                detections = map_detections_to_bars(ticker, chart["window_index"], result, names)
+                last_bar = len(chart["window_index"]) - 1
+                
+                for det in detections:
+                    if det.get("signal") and int(det["bar_index"]) == last_bar:
+                        rows.append({
+                            "ticker": ticker,
+                            "event_time": det["event_time"],
+                            "signal": det["signal"],
+                            "confidence": det["confidence"],
+                        })
+                break  # Success, exit retry loop
+                        
+            except Exception as e:
+                if retry < max_retries - 1:
+                    import time
+                    time.sleep(2 ** retry)
+                    continue
+                log.warning(f"Error scanning {ticker}: {e}")
+                failed_scans.append(ticker)
+                break
+    
+    if failed_scans:
+        log.warning(f"Failed to scan {len(failed_scans)} tickers")
+        if len(failed_scans) <= 10:
+            log.warning(f"Failed tickers: {failed_scans}")
     
     return pd.DataFrame(rows)
 

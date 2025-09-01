@@ -69,13 +69,24 @@ def _save_state(path: Path, state: dict) -> None:
     path.write_text(json.dumps(state, indent=2, default=str))
 
 def _latest_close_price(symbol: str) -> Optional[float]:
-    try:
-        df = yf.download(symbol, period="5d", interval="1d", progress=False, auto_adjust=False)
-        if df is None or df.empty:
+    max_retries = 3
+    for retry in range(max_retries):
+        try:
+            df = yf.download(symbol, period="5d", interval="1d", progress=False, auto_adjust=False)
+            if df is None or df.empty:
+                if retry < max_retries - 1:
+                    import time
+                    time.sleep(1)
+                    continue
+                return None
+            return float(df["Close"].iloc[-1])
+        except Exception as e:
+            if retry < max_retries - 1:
+                import time
+                time.sleep(2 ** retry)  # Exponential backoff
+                continue
+            print(f"[WARN] Failed to get ticker '{symbol}' reason: {e}")
             return None
-        return float(df["Close"].iloc[-1])
-    except Exception:
-        return None
 
 def _qty_for_notional(price: Optional[float], notional: float) -> int:
     if price is None or price <= 0:
@@ -182,8 +193,23 @@ def run_once(cfg: RunConfig) -> dict:
     )
 
     if not tickers:
-        print("[WARN] No tickers passed screen.")
-        return {"signals": pd.DataFrame(), "orders": []}
+        print("[WARN] No tickers passed screen. Trying reliable fallback list...")
+        # Try with a smaller, more reliable list
+        from backtest_yolo_events import get_reliable_stock_list
+        reliable_candidates = get_reliable_stock_list()
+        tickers = screen_by_price_and_liquidity(
+            reliable_candidates,
+            min_price=cfg.min_price,
+            max_price=cfg.max_price,
+            min_dollar_vol=cfg.min_dollar_vol,
+            lookback_days=cfg.lookback_days,
+        )
+        
+        if not tickers:
+            print("[ERROR] No tickers passed screen even with fallback list.")
+            return {"signals": pd.DataFrame(), "orders": []}
+        else:
+            print(f"[INFO] Using fallback list: {len(tickers)} tickers passed screen.")
 
     # 3) Scan signals
     model = YOLO(cfg.model_path)
