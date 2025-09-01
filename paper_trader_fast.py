@@ -84,8 +84,14 @@ def _qty_for_notional(price: Optional[float], notional: float) -> int:
 
 def _alpaca_client_from_env() -> TradingClient:
     # Using paper=True directs SDK to paper endpoint; keys from env
-    api_key = os.environ["ALPACA_API_KEY_ID"]
-    api_secret = os.environ["ALPACA_API_SECRET_KEY"]
+    api_key = os.environ.get("ALPACA_API_KEY_ID")
+    api_secret = os.environ.get("ALPACA_API_SECRET_KEY")
+    
+    if not api_key or not api_secret:
+        print("[WARN] Alpaca API keys not found. Running in DRY RUN mode.")
+        # Return a mock client or handle gracefully
+        raise ValueError("Alpaca API keys not configured. Set ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY environment variables.")
+    
     return TradingClient(api_key, api_secret, paper=True)
 
 def _positions_by_symbol(client: TradingClient) -> Dict[str, Position]:
@@ -110,10 +116,18 @@ def run_once(cfg: RunConfig) -> dict:
     4) Save artifacts (signals, orders, positions) and persist state
     """
     # Prep
-    client = _alpaca_client_from_env()
-    account = client.get_account()
-    equity = float(account.equity)  # paper equity
-    print(f"[INFO] Paper equity: ${equity:,.2f}")
+    try:
+        client = _alpaca_client_from_env()
+        account = client.get_account()
+        equity = float(account.equity)  # paper equity
+        print(f"[INFO] Paper equity: ${equity:,.2f}")
+        dry_run = False
+    except ValueError as e:
+        print(f"[INFO] {e}")
+        print("[INFO] Running in DRY RUN mode - no actual trades will be placed")
+        client = None
+        equity = 100000.0  # Default equity for dry run
+        dry_run = True
 
     # 1) Exit due positions (based on our local state clock, not broker)
     state = _load_state(cfg.state_path)
@@ -121,14 +135,18 @@ def run_once(cfg: RunConfig) -> dict:
     today = _now_et().date()
     still_open: List[dict] = []
 
-    existing_positions = _positions_by_symbol(client)
+    if not dry_run:
+        existing_positions = _positions_by_symbol(client)
+    else:
+        existing_positions = {}
 
     for tr in open_trades:
         sym = tr["symbol"]
         due = date.fromisoformat(tr["exit_after"])
         if today >= due and sym in existing_positions:
             print(f"[INFO] Exiting due position {sym} ({tr['side']})")
-            _close_position(client, sym)
+            if not dry_run:
+                _close_position(client, sym)
         else:
             still_open.append(tr)
     state["open_trades"] = still_open
@@ -183,7 +201,10 @@ def run_once(cfg: RunConfig) -> dict:
     placed_orders = []
     day_cap_notional = equity * cfg.max_portfolio_day_cap
     used_notional = 0.0
-    positions = _positions_by_symbol(client)  # refresh after exits
+    if not dry_run:
+        positions = _positions_by_symbol(client)  # refresh after exits
+    else:
+        positions = {}
 
     # Convert to simple list of dicts ordered by confidence
     rows = sigs.to_dict(orient="records")
@@ -217,15 +238,21 @@ def run_once(cfg: RunConfig) -> dict:
                 continue
 
         try:
-            order = client.submit_order(
-                order_data=MarketOrderRequest(
-                    symbol=sym,
-                    qty=qty,
-                    side=side,
-                    time_in_force=TimeInForce.DAY,
+            if dry_run:
+                print(f"[DRY RUN] Would place {side.value} {qty} {sym} at ~${price:.2f}")
+                order_id = f"DRY_RUN_{sym}_{today}"
+            else:
+                order = client.submit_order(
+                    order_data=MarketOrderRequest(
+                        symbol=sym,
+                        qty=qty,
+                        side=side,
+                        time_in_force=TimeInForce.DAY,
+                    )
                 )
-            )
-            print(f"[INFO] Placed {side.value} {qty} {sym}")
+                print(f"[INFO] Placed {side.value} {qty} {sym}")
+                order_id = order.id
+            
             placed_orders.append({
                 "symbol": sym,
                 "side": side.value,
@@ -233,7 +260,7 @@ def run_once(cfg: RunConfig) -> dict:
                 "estimated_price": price,
                 "confidence": float(row.get("confidence") or 0.0),
                 "event_time": str(row["event_time"]),
-                "order_id": order.id,
+                "order_id": order_id,
             })
             used_notional += (price or 0.0) * qty
 
@@ -260,16 +287,20 @@ def run_once(cfg: RunConfig) -> dict:
         pd.DataFrame(placed_orders).to_csv(outdir / "orders.csv", index=False)
 
     # Save current positions snapshot
-    current_pos = client.get_all_positions()
-    if current_pos:
-        pd.DataFrame([{
-            "symbol": p.symbol,
-            "qty": float(p.qty),
-            "side": p.side,
-            "market_value": float(p.market_value),
-            "avg_entry_price": float(p.avg_entry_price),
-            "unrealized_pl": float(p.unrealized_pl)
-        } for p in current_pos]).to_csv(outdir / "positions.csv", index=False)
+    if not dry_run:
+        current_pos = client.get_all_positions()
+        if current_pos:
+            pd.DataFrame([{
+                "symbol": p.symbol,
+                "qty": float(p.qty),
+                "side": p.side,
+                "market_value": float(p.market_value),
+                "avg_entry_price": float(p.avg_entry_price),
+                "unrealized_pl": float(p.unrealized_pl)
+            } for p in current_pos]).to_csv(outdir / "positions.csv", index=False)
+    else:
+        # In dry run mode, save empty positions file
+        pd.DataFrame(columns=["symbol", "qty", "side", "market_value", "avg_entry_price", "unrealized_pl"]).to_csv(outdir / "positions.csv", index=False)
 
     _save_state(cfg.state_path, state)
 

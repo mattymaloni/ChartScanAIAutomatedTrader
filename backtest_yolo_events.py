@@ -6,7 +6,7 @@ import logging
 import math
 import os
 from dataclasses import dataclass, asdict, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -699,6 +699,75 @@ def single_test_multi_horizons(
         "detections": {"total": total_dets, "eligible": {h: len(out_trades[h]) for h in cfg.holding_bars_list}},
         "all_detections": det_df_all,
     }
+
+
+# ============================== signal scanning ==============================
+
+def scan_right_edge_signals(
+    tickers: List[str],
+    cfg: Config,
+    model: YOLO,
+    interval: str = "1d",
+    chunk_size: int = 180,
+    logger: Optional[logging.Logger] = None,
+) -> pd.DataFrame:
+    """
+    Scan a list of tickers for right-edge signals (detections on the last bar of the window).
+    Returns a DataFrame with columns: ticker, event_time, signal, confidence
+    """
+    log = logger or get_logger()
+    names = {int(k): str(v) for k, v in getattr(model, "names", {}).items()}
+    
+    rows = []
+    for ticker in tqdm(tickers, desc="Scanning signals", unit="ticker"):
+        try:
+            # Download recent data
+            iv = "60m" if interval == "1h" else interval
+            if interval == "1h":
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=730)
+                data = yf.download(ticker, interval=iv, start=start_date, end=end_date, progress=False, auto_adjust=False)
+            else:
+                data = yf.download(ticker, interval=iv, period="max", progress=False, auto_adjust=False)
+            
+            if data is None or data.empty:
+                continue
+                
+            data = _normalize_yf_frame(data, ticker)
+            if data.empty or len(data) < chunk_size:
+                continue
+                
+            # Get the latest window
+            window = data.iloc[-chunk_size:].copy()
+            if window.empty:
+                continue
+                
+            # Render chart
+            chart = render_window_png(window, 0, cfg)
+            if chart is None:
+                continue
+                
+            # Run YOLO prediction
+            result = yolo_predict_png(chart["buffer"], model, cfg)
+            
+            # Map detections to bars and filter for right-edge only
+            detections = map_detections_to_bars(ticker, chart["window_index"], result, names)
+            last_bar = len(chart["window_index"]) - 1
+            
+            for det in detections:
+                if det.get("signal") and int(det["bar_index"]) == last_bar:
+                    rows.append({
+                        "ticker": ticker,
+                        "event_time": det["event_time"],
+                        "signal": det["signal"],
+                        "confidence": det["confidence"],
+                    })
+                    
+        except Exception as e:
+            log.warning(f"Error scanning {ticker}: {e}")
+            continue
+    
+    return pd.DataFrame(rows)
 
 
 # ============================== persistence ==============================
