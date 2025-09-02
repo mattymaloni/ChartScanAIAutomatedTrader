@@ -7,5 +7,5 @@ requests==2.31.0
 streamlit==1.36.0
 torch==2.3.1
 ultralytics==8.2.39
-yfinance==0.2.40
+yfinance==0.2.65
 alpaca-py
