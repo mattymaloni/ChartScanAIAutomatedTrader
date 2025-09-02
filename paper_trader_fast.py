@@ -39,7 +39,7 @@ class RunConfig:
     min_dollar_vol: float = 1_000_000  # Lowered to 1M to include more stocks
     lookback_days: int = 70
     max_trades_per_day: int = 50   # Increased to allow more trades per day
-    long_only: bool = True         # set False to allow shorts (paper supports it)
+    long_only: bool = False        # Enable shorts - model detects both buy/sell signals
     holding_days: int = 5          # exit after this many trading days
 
     # Sizing
