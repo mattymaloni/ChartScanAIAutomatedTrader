@@ -91,7 +91,9 @@ def _clear_yfinance_cache():
 
 def _latest_close_price(symbol: str) -> Optional[float]:
     import os
-    is_ci = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
+    ci_env = os.environ.get('CI', '').lower() in ('true', '1', 'yes')
+    github_actions = os.environ.get('GITHUB_ACTIONS', '').lower() in ('true', '1', 'yes')
+    is_ci = ci_env or github_actions
     max_retries = 8 if is_ci else 5  # Even more retries for CI
     
     for retry in range(max_retries):
@@ -226,12 +228,14 @@ def run_once(cfg: RunConfig) -> dict:
     # Clear yfinance cache to prevent corrupted data issues
     _clear_yfinance_cache()
     
-    # Reduce load for CI environments (but allow much larger universes now that we fixed API issues)
+    # CI environment detection (no longer limiting universe size since we fixed API issues)
     import os
-    if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
-        print("[INFO] Running in CI environment - using optimized settings for large-scale scanning")
-        cfg.max_universe_size = min(cfg.max_universe_size, 500)  # Allow up to 500 stocks in CI
-        cfg.max_trades_per_day = min(cfg.max_trades_per_day, 20)  # Allow up to 20 trades in CI
+    ci_env = os.environ.get('CI', '').lower() in ('true', '1', 'yes')
+    github_actions = os.environ.get('GITHUB_ACTIONS', '').lower() in ('true', '1', 'yes')
+    
+    if ci_env or github_actions:
+        print("[INFO] Running in CI environment - full 1000 stock universe enabled")
+        # No longer limiting universe size - we fixed the root API issues
     
     # Prep
     try:
