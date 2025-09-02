@@ -226,12 +226,12 @@ def run_once(cfg: RunConfig) -> dict:
     # Clear yfinance cache to prevent corrupted data issues
     _clear_yfinance_cache()
     
-    # Reduce load for CI environments
+    # Reduce load for CI environments (but allow much larger universes now that we fixed API issues)
     import os
     if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
-        print("[INFO] Running in CI environment - reducing universe size for stability")
-        cfg.max_universe_size = min(cfg.max_universe_size, 100)  # Limit to 100 stocks max in CI
-        cfg.max_trades_per_day = min(cfg.max_trades_per_day, 5)  # Limit to 5 trades max in CI
+        print("[INFO] Running in CI environment - using optimized settings for large-scale scanning")
+        cfg.max_universe_size = min(cfg.max_universe_size, 500)  # Allow up to 500 stocks in CI
+        cfg.max_trades_per_day = min(cfg.max_trades_per_day, 20)  # Allow up to 20 trades in CI
     
     # Prep
     try:
