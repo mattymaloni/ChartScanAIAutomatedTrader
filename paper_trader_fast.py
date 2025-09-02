@@ -73,18 +73,35 @@ def _clear_yfinance_cache():
     try:
         import shutil
         import os
-        cache_dir = os.path.expanduser("~/Library/Caches/py-yfinance")
-        if os.path.exists(cache_dir):
-            shutil.rmtree(cache_dir)
-            print("[INFO] Cleared yfinance cache")
+        import platform
+        
+        # Different cache locations for different OS
+        if platform.system() == "Darwin":  # macOS
+            cache_dirs = ["~/Library/Caches/py-yfinance"]
+        else:  # Linux/Ubuntu (GitHub Actions)
+            cache_dirs = ["~/.cache/py-yfinance", "~/.cache/yfinance"]
+            
+        for cache_path in cache_dirs:
+            cache_dir = os.path.expanduser(cache_path)
+            if os.path.exists(cache_dir):
+                shutil.rmtree(cache_dir)
+                print(f"[INFO] Cleared yfinance cache: {cache_dir}")
     except Exception as e:
         print(f"[WARN] Failed to clear yfinance cache: {e}")
 
 def _latest_close_price(symbol: str) -> Optional[float]:
-    max_retries = 3
+    max_retries = 5  # More retries for CI environments
     for retry in range(max_retries):
         try:
-            df = yf.download(symbol, period="5d", interval="1d", progress=False, auto_adjust=False)
+            # More conservative settings for CI
+            df = yf.download(
+                symbol, 
+                period="5d", 
+                interval="1d", 
+                progress=False, 
+                auto_adjust=False,
+                timeout=30  # Explicit timeout
+            )
             if df is None or df.empty:
                 if retry < max_retries - 1:
                     import time
@@ -132,7 +149,11 @@ def _latest_close_price(symbol: str) -> Optional[float]:
         except Exception as e:
             if retry < max_retries - 1:
                 import time
-                time.sleep(5 + (2 ** retry))  # Longer delays: 6s, 7s, 9s
+                import os
+                # Longer delays for CI environments (GitHub Actions)
+                is_ci = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
+                base_delay = 10 if is_ci else 5
+                time.sleep(base_delay + (2 ** retry))  # CI: 11s, 12s, 14s, 18s
                 continue
             print(f"[WARN] Failed to get ticker '{symbol}' reason: {e}")
             return None
@@ -290,6 +311,9 @@ def run_once(cfg: RunConfig) -> dict:
     rows = sigs.to_dict(orient="records")
     rows = sorted(rows, key=lambda r: float(r.get("confidence") or 0.0), reverse=True)
 
+    # Price cache to avoid double API calls
+    price_cache = {}
+
     for row in rows:
         if len(placed_orders) >= cfg.max_trades_per_day:
             break
@@ -298,10 +322,16 @@ def run_once(cfg: RunConfig) -> dict:
         if cfg.long_only and sig != "buy":
             continue
 
-        price = _latest_close_price(sym)
-        # Add delay between price fetches to avoid rate limiting
-        import time
-        time.sleep(2)  # 2 second delay between price fetches
+        # Use cached price or fetch new one
+        if sym in price_cache:
+            price = price_cache[sym]
+        else:
+            price = _latest_close_price(sym)
+            if price:
+                price_cache[sym] = price
+            # Add delay only for new fetches
+            import time
+            time.sleep(1)  # 1 second delay for new price fetches
         
         per_trade_notional = equity * cfg.max_alloc_per_trade
         remaining_cap = max(0.0, day_cap_notional - used_notional)
