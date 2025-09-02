@@ -578,12 +578,13 @@ def screen_by_price_and_liquidity(
     lookback_days: int,
     batch_size: int = 5,  # Very small batch size to avoid rate limits
     logger: Optional[logging.Logger] = None,
-) -> List[str]:
+) -> Tuple[List[str], Dict[str, float]]:
     if not tickers:
-        return []
+        return [], {}
     log = logger or get_logger()
 
     passed: List[str] = []
+    prices: Dict[str, float] = {}  # Store prices during screening
     failed_downloads = []
     
     for i in range(0, len(tickers), batch_size):
@@ -641,6 +642,7 @@ def screen_by_price_and_liquidity(
             dv = (close * vol).tail(lookback_days).mean()
             if float(dv) >= min_dollar_vol:
                 passed.append(t)
+                prices[t] = last_px  # Store the price we already calculated
 
     if failed_downloads:
         log.warning(f"Failed downloads: {len(failed_downloads)} tickers")
@@ -650,7 +652,7 @@ def screen_by_price_and_liquidity(
     out = sorted(set(passed))
     log.info("Screened %d/%d tickers (price %.2f–%.2f, avg $%s/day over %dd).",
              len(out), len(tickers), min_price, max_price, f"{min_dollar_vol:,.0f}", lookback_days)
-    return out
+    return out, prices
 
 
 def download_prices_batched(
