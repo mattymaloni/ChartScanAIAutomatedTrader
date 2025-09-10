@@ -211,11 +211,15 @@ def _positions_by_symbol(client: TradingClient) -> Dict[str, Position]:
         out[p.symbol] = p
     return out
 
-def _close_position(client: TradingClient, symbol: str) -> None:
+def _close_position(client: TradingClient, symbol: str) -> bool:
+    """Close a position in Alpaca. Returns True if successful, False otherwise."""
     try:
-        client.close_position(symbol)
+        result = client.close_position(symbol)
+        print(f"[SUCCESS] Closed position {symbol}: {result}")
+        return True
     except Exception as e:
-        print(f"[WARN] close_position({symbol}) failed: {e}")
+        print(f"[ERROR] close_position({symbol}) failed: {e}")
+        return False
 
 # ---------- Core ----------
 def run_once(cfg: RunConfig) -> dict:
@@ -262,15 +266,31 @@ def run_once(cfg: RunConfig) -> dict:
     else:
         existing_positions = {}
 
+    closed_count = 0
     for tr in open_trades:
         sym = tr["symbol"]
         due = date.fromisoformat(tr["exit_after"])
-        if today >= due and sym in existing_positions:
-            print(f"[INFO] Exiting due position {sym} ({tr['side']})")
+        if today >= due:
+            print(f"[INFO] Position {sym} due for exit (exit_after: {due}, today: {today})")
             if not dry_run:
-                _close_position(client, sym)
+                if sym in existing_positions:
+                    pos = existing_positions[sym]
+                    print(f"[INFO] Found position in Alpaca: {sym} qty={pos.qty} side={pos.side}")
+                    success = _close_position(client, sym)
+                    if success:
+                        closed_count += 1
+                        print(f"[SUCCESS] Successfully closed position {sym}")
+                    else:
+                        print(f"[ERROR] Failed to close position {sym} - removing from state anyway")
+                else:
+                    print(f"[WARN] Position {sym} not found in Alpaca positions (may have been closed manually)")
+            else:
+                print(f"[DRY-RUN] Would close position {sym}")
+            # Always remove from state when exit date has passed
         else:
             still_open.append(tr)
+    
+    print(f"[INFO] Exit summary: {len(open_trades) - len(still_open)} positions removed from state, {closed_count} positions closed in Alpaca")
     state["open_trades"] = still_open
 
     # 2) Build & screen universe
