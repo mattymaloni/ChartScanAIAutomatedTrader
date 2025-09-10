@@ -297,6 +297,24 @@ def run_once(cfg: RunConfig) -> dict:
 
     if not dry_run:
         existing_positions = _positions_by_symbol(client)
+        # Backfill missing state entries from broker so exits don't depend on prior commits
+        existing_keys = set((str(t.get("symbol")).upper(), str(t.get("side", "long")).lower()) for t in open_trades)
+        for pos in existing_positions.values():
+            symbol = str(getattr(pos, "symbol", "")).upper()
+            side = str(getattr(pos, "side", "long")).lower()
+            key = (symbol, side)
+            if key not in existing_keys:
+                # Synthesize an entry that is immediately due for exit
+                synth_entry = {
+                    "symbol": symbol,
+                    "side": side,
+                    "qty": int(abs(float(getattr(pos, "qty", 0)))) if str(getattr(pos, "qty", "0")) else 0,
+                    "entry_date": str(today),
+                    "exit_after": str(today),
+                }
+                print(f"[WARN] Backfilled missing state for broker-held {symbol} ({side}); scheduling exit today")
+                open_trades.append(synth_entry)
+                existing_keys.add(key)
     else:
         existing_positions = {}
 
