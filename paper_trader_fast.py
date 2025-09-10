@@ -221,6 +221,40 @@ def _close_position(client: TradingClient, symbol: str) -> bool:
         print(f"[ERROR] close_position({symbol}) failed: {e}")
         return False
 
+def _submit_close_order(client: TradingClient, pos: Position) -> Optional[str]:
+    """Submit a market order to close an Alpaca Position.
+
+    Returns order_id if submitted successfully, otherwise None.
+    """
+    try:
+        symbol = pos.symbol
+        # Alpaca Position.qty is typically a string; convert to absolute integer quantity
+        try:
+            qty = int(abs(float(pos.qty)))
+        except Exception:
+            qty = int(abs(float(str(pos.qty))))
+
+        if qty <= 0:
+            print(f"[WARN] Position {symbol} has non-positive qty={pos.qty}; skipping close order")
+            return None
+
+        # For long positions, sell to close; for short positions, buy to cover
+        side = OrderSide.SELL if getattr(pos, "side", "long").lower() == "long" else OrderSide.BUY
+
+        order = client.submit_order(
+            order_data=MarketOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=side,
+                time_in_force=TimeInForce.DAY,
+            )
+        )
+        print(f"[INFO] Submitted exit order for {symbol}: side={side.value} qty={qty} order_id={order.id}")
+        return order.id
+    except Exception as e:
+        print(f"[ERROR] submit close order failed for {pos.symbol}: {e}")
+        return None
+
 # ---------- Core ----------
 def run_once(cfg: RunConfig) -> dict:
     """
@@ -267,6 +301,7 @@ def run_once(cfg: RunConfig) -> dict:
         existing_positions = {}
 
     closed_count = 0
+    exit_orders: List[dict] = []
     for tr in open_trades:
         sym = tr["symbol"]
         due = date.fromisoformat(tr["exit_after"])
@@ -276,14 +311,36 @@ def run_once(cfg: RunConfig) -> dict:
                 if sym in existing_positions:
                     pos = existing_positions[sym]
                     print(f"[INFO] Found position in Alpaca: {sym} qty={pos.qty} side={pos.side}")
-                    success = _close_position(client, sym)
-                    if success:
+                    order_id = _submit_close_order(client, pos)
+                    if order_id:
                         closed_count += 1
-                        print(f"[SUCCESS] Successfully closed position {sym}")
+                        print(f"[SUCCESS] Exit order placed for {sym} (order_id={order_id})")
+                        # Record exit order to artifacts
+                        exit_orders.append({
+                            "symbol": sym,
+                            "side": "sell" if getattr(pos, "side", "long").lower() == "long" else "buy",
+                            "qty": int(abs(float(pos.qty))) if str(pos.qty) else None,
+                            "estimated_price": None,
+                            "confidence": None,
+                            "event_time": str(today),
+                            "order_id": order_id,
+                            "action": "exit",
+                        })
+                        # Successful order placed: drop from state
                     else:
-                        print(f"[ERROR] Failed to close position {sym} - removing from state anyway")
+                        # Fallback to broker-side liquidation
+                        success = _close_position(client, sym)
+                        if success:
+                            closed_count += 1
+                            print(f"[SUCCESS] Successfully requested broker liquidation for {sym}")
+                        else:
+                            # Keep in state to retry next run
+                            print(f"[ERROR] Failed to close {sym}; keeping in state to retry")
+                            still_open.append(tr)
+                            continue
                 else:
                     print(f"[WARN] Position {sym} not found in Alpaca positions (may have been closed manually)")
+                    # If broker doesn't have it, remove from state
             else:
                 print(f"[DRY-RUN] Would close position {sym}")
             # Always remove from state when exit date has passed
@@ -358,6 +415,8 @@ def run_once(cfg: RunConfig) -> dict:
 
     # 4) Place orders (rank by confidence; apply caps)
     placed_orders = []
+    # Include exit orders first so they appear in today's artifacts
+    placed_orders.extend(exit_orders)
     day_cap_notional = equity * cfg.max_portfolio_day_cap
     used_notional = 0.0
     if not dry_run:
