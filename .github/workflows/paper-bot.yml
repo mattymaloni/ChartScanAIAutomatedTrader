@@ -77,12 +77,16 @@ jobs:
         run: |
           git config user.name "chartscan-bot"
           git config user.email "chartscan-bot@users.noreply.github.com"
-          
-          # Check if there are any changes to commit
-          if git diff --quiet && git diff --cached --quiet; then
-            echo "No changes to commit"
+
+          # Stage all normal (non-ignored) changes first
+          git add -A || true
+          # Force-add ignored artifacts so state persists across runs
+          git add -f daily_runs/ paper_state.json || true
+
+          # Commit only if there are staged changes
+          if git diff --staged --quiet; then
+            echo "No staged changes to commit"
           else
-            git add daily_runs/ paper_state.json || true
-            git commit -m "chore(run): paper bot artifacts $(date -u +'%Y-%m-%d %H:%M:%SZ')" || echo "No changes to commit"
+            git commit -m "chore(run): paper bot artifacts $(date -u +'%Y-%m-%d %H:%M:%SZ')"
             git push
           fi
