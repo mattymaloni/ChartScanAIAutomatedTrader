@@ -1,11 +1,3 @@
-symbol,side,qty,estimated_price,confidence,event_time,order_id,action
-ATR,sell,72,,,2025-09-10,ae9fc69b-35f2-49d5-b74c-763f167f3ffd,exit
-BEN,sell,1,,,2025-09-10,7785c7b8-300c-44b7-871d-43ee2cad136a,exit
-C,sell,414,,,2025-09-10,503427e8-ffda-49b0-a8f6-1c86035d2b2d,exit
-DG,sell,1,,,2025-09-10,bce3d8a0-3375-4b9b-94c5-38cf80c3ae32,exit
-FDX,sell,44,,,2025-09-10,bcd32166-3b6d-44ea-9ab0-40f3040e62b6,exit
-FMC,sell,1042,,,2025-09-10,c85594de-2863-488e-893e-b8afaaf66a12,exit
-FTI,sell,1092,,,2025-09-10,6e251e7d-16c8-4a91-b9ea-24aa0d5c09b4,exit
-NIO,sell,1,,,2025-09-10,2de3ea60-f44b-41ae-86f6-917614f00831,exit
-T,sell,1365,,,2025-09-10,7db02b1f-b452-4d53-abe6-b0032fea9ec6,exit
-UAA,sell,1,,,2025-09-10,5d4e8c12-d923-4ac6-86ac-fb1b5601d72b,exit
+symbol,side,qty,estimated_price,confidence,event_time,order_id
+AOS,buy,344,72.48999786376953,0.7477802038192749,2025-09-10 00:00:00,c7268fb5-029e-44c9-899b-7e808d7ec614
+KMI,sell,1,27.3799991607666,0.7102687358856201,2025-09-10 00:00:00,22b908ad-7b6e-4a2e-879f-2683b74c601a

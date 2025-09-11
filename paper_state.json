@@ -1,3 +1,88 @@
 {
-  "open_trades": []
+  "open_trades": [
+    {
+      "symbol": "ATR",
+      "side": "positionside.long",
+      "qty": 72,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "BEN",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "C",
+      "side": "positionside.long",
+      "qty": 414,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "DG",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "FDX",
+      "side": "positionside.long",
+      "qty": 44,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "FMC",
+      "side": "positionside.long",
+      "qty": 1042,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "FTI",
+      "side": "positionside.long",
+      "qty": 1092,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "NIO",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "T",
+      "side": "positionside.long",
+      "qty": 1365,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "UAA",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-11"
+    },
+    {
+      "symbol": "AOS",
+      "side": "long",
+      "qty": 344,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-16"
+    },
+    {
+      "symbol": "KMI",
+      "side": "short",
+      "qty": 1,
+      "entry_date": "2025-09-11",
+      "exit_after": "2025-09-16"
+    }
+  ]
 }
