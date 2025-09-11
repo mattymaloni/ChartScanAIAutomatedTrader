@@ -280,13 +280,20 @@ def run_once(cfg: RunConfig) -> dict:
         client = _alpaca_client_from_env()
         account = client.get_account()
         equity = float(account.equity)  # paper equity
+        # Use broker-reported buying power to size entries safely across runs
+        try:
+            buying_power_remaining = float(getattr(account, "buying_power", equity))
+        except Exception:
+            buying_power_remaining = equity
         print(f"[INFO] Paper equity: ${equity:,.2f}")
+        print(f"[INFO] Buying power: ${buying_power_remaining:,.2f}")
         dry_run = False
     except ValueError as e:
         print(f"[INFO] {e}")
         print("[INFO] Running in DRY RUN mode - no actual trades will be placed")
         client = None
         equity = 100000.0  # Default equity for dry run
+        buying_power_remaining = equity
         dry_run = True
 
     # 1) Exit due positions (based on our local state clock, not broker)
@@ -477,9 +484,11 @@ def run_once(cfg: RunConfig) -> dict:
                 import time
                 time.sleep(1)  # 1 second delay for new price fetches
         
+        # Size this order by remaining buying power, day cap, and per-trade cap
         per_trade_notional = equity * cfg.max_alloc_per_trade
-        remaining_cap = max(0.0, day_cap_notional - used_notional)
-        notional = min(per_trade_notional, remaining_cap)
+        remaining_day_cap = max(0.0, day_cap_notional - used_notional)
+        available_notional = min(per_trade_notional, remaining_day_cap, max(0.0, buying_power_remaining))
+        notional = available_notional
         qty = _qty_for_notional(price, notional)
         if qty < 1:
             continue
@@ -520,7 +529,10 @@ def run_once(cfg: RunConfig) -> dict:
                 "event_time": str(row["event_time"]),
                 "order_id": order_id,
             })
-            used_notional += (price or 0.0) * qty
+            order_notional = (price or 0.0) * qty
+            used_notional += order_notional
+            # Reduce local view of buying power to prevent over-ordering within this run
+            buying_power_remaining = max(0.0, buying_power_remaining - order_notional)
 
             # Track exit plan only if we *opened* a new exposure in that direction
             exit_after = today + timedelta(days=cfg.holding_days)
