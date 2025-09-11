@@ -442,12 +442,23 @@ def run_once(cfg: RunConfig) -> dict:
     placed_orders = []
     # Include exit orders first so they appear in today's artifacts
     placed_orders.extend(exit_orders)
-    day_cap_notional = equity * cfg.max_portfolio_day_cap
-    used_notional = 0.0
+    # Refresh account after exits so proceeds are usable for entries this run
     if not dry_run:
+        try:
+            account = client.get_account()
+            equity = float(account.equity)
+            try:
+                buying_power_remaining = float(getattr(account, "buying_power", equity))
+            except Exception:
+                buying_power_remaining = equity
+            print(f"[INFO] Refreshed account after exits: equity=${equity:,.2f}, buying_power=${buying_power_remaining:,.2f}")
+        except Exception as e:
+            print(f"[WARN] Failed to refresh account after exits: {e}")
         positions = _positions_by_symbol(client)  # refresh after exits
     else:
         positions = {}
+    day_cap_notional = equity * cfg.max_portfolio_day_cap
+    used_notional = 0.0
 
     # Convert to simple list of dicts ordered by confidence
     rows = sigs.to_dict(orient="records")
