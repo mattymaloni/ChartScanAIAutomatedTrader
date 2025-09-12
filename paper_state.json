@@ -71,34 +71,6 @@
       "exit_after": "2025-09-17"
     },
     {
-      "symbol": "CRL",
-      "side": "positionside.long",
-      "qty": 266,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-12"
-    },
-    {
-      "symbol": "KMI",
-      "side": "positionside.short",
-      "qty": 379,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-12"
-    },
-    {
-      "symbol": "MGM",
-      "side": "positionside.long",
-      "qty": 1148,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-12"
-    },
-    {
-      "symbol": "NIO",
-      "side": "positionside.long",
-      "qty": 4,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-12"
-    },
-    {
       "symbol": "T",
       "side": "long",
       "qty": 676,
@@ -109,6 +81,27 @@
       "symbol": "GME",
       "side": "long",
       "qty": 1,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "AIV",
+      "side": "short",
+      "qty": 5447,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "IPGP",
+      "side": "long",
+      "qty": 503,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "ARKG",
+      "side": "long",
+      "qty": 397,
       "entry_date": "2025-09-12",
       "exit_after": "2025-09-17"
     }
