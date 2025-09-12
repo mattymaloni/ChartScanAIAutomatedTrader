@@ -29,13 +29,18 @@ from ultralytics import YOLO
 # ============================== logging / utils ==============================
 
 def get_logger(name: str = "yolo_backtest", level: int = logging.INFO) -> logging.Logger:
+    import sys
     logger = logging.getLogger(name)
-    if logger.handlers:
-        return logger
+    # Always honor requested level
     logger.setLevel(level)
-    h = logging.StreamHandler()
-    h.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-    logger.addHandler(h)
+    if not logger.handlers:
+        # Write to stdout so it shows in most terminals/VS Code terminals
+        h = logging.StreamHandler(stream=sys.stdout)
+        h.setLevel(level)
+        h.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        logger.addHandler(h)
+    # Prevent double logging via root logger
+    logger.propagate = False
     return logger
 
 
@@ -72,13 +77,13 @@ class Config:
     max_universe_size: int = 1000
 
     # --- universe filters ---
-    max_price: float = 3000.0
-    min_price: float = 5.0
+    max_price: float = 1e9
+    min_price: float = 0.0
     min_dollar_vol: float = 1e6  # Lowered to 1M to include more stocks
     dollar_vol_lookback: int = 70
 
     # --- test selection ---
-    interval: str = "1d"                 # "1d" or "1h" ("1h" -> "60m")
+    interval: str = "15m"                # intraday by default (e.g., "15m")
     chunk_size: int = 180
     days: int = 60
     stride: int = 1
@@ -188,13 +193,39 @@ def _normalize_yf_frame(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
 def _compute_fetch_period_days(cfg: Config) -> int:
     """
-    History needed = chunk_size + days windows + max holding horizon (+ small headroom).
-    Convert trading bars to calendar days (~252 trading days/year) + 10% cushion.
+    Estimate calendar days of history needed based on interval.
+    For intraday intervals, convert required bars to trading days using bars/day,
+    then to calendar days (~252 trading days/year). Cap to yfinance limits.
     """
     h_max = max(cfg.holding_bars_list) if cfg.holding_bars_list else 1
-    required_trading_bars = cfg.chunk_size + cfg.days + h_max + 2
-    calendar_days = math.ceil(required_trading_bars * (365.0 / 252.0))
-    return max(math.ceil(calendar_days * 1.10), 30)
+    required_bars = cfg.chunk_size + cfg.days + h_max + 2
+
+    iv = cfg.interval.lower().strip()
+    # Approx bars per regular trading day (6.5 hours)
+    if iv in ("60m", "1h"):
+        bars_per_day = 7  # ~6-7 bars/day
+    elif iv in ("15m",):
+        bars_per_day = 26
+    elif iv.endswith("m") or iv.endswith("h"):
+        # Fallback for other intraday intervals
+        try:
+            unit = 60 if iv.endswith("h") else 1
+            n = int(iv[:-1]) * unit
+            bars_per_day = max(int(390 / n), 1)
+        except Exception:
+            bars_per_day = 26
+    else:
+        bars_per_day = 1  # daily
+
+    if bars_per_day > 1:
+        trading_days_needed = math.ceil(required_bars / bars_per_day)
+        calendar_days = math.ceil(trading_days_needed * (365.0 / 252.0))
+        # yfinance limits for intraday (>=15m typically 60d max)
+        max_allowed = 60
+        return min(max(calendar_days, 7), max_allowed)
+    else:
+        calendar_days = math.ceil(required_bars * (365.0 / 252.0))
+        return max(math.ceil(calendar_days * 1.10), 30)
 
 
 def load_candidates_from_csv(path: str) -> List[str]:
@@ -1091,10 +1122,10 @@ def scan_right_edge_signals(
             try:
                 # Download recent data
                 iv = "60m" if interval == "1h" else interval
-                if interval == "1h":
-                    end_date = datetime.now()
-                    start_date = end_date - timedelta(days=730)
-                    data = yf.download(ticker, interval=iv, start=start_date, end=end_date, progress=False, auto_adjust=False)
+                # Intraday handling: use bounded period (cap to yfinance limits)
+                if iv.endswith("m") or iv.endswith("h"):
+                    period_days = _compute_fetch_period_days(cfg)
+                    data = yf.download(ticker, interval=iv, period=f"{period_days}d", progress=False, auto_adjust=False)
                 else:
                     data = yf.download(ticker, interval=iv, period="max", progress=False, auto_adjust=False)
                 

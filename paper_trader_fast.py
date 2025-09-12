@@ -374,6 +374,8 @@ def run_once(cfg: RunConfig) -> dict:
     
     print(f"[INFO] Exit summary: {len(open_trades) - len(still_open)} positions removed from state, {closed_count} positions closed in Alpaca")
     state["open_trades"] = still_open
+    # Symbols currently under a holding period (do not trade opposite or same direction)
+    open_symbols = {str(t.get("symbol", "")).upper() for t in state.get("open_trades", [])}
 
     # 2) Build & screen universe
     bt = BTConfig(
@@ -385,6 +387,12 @@ def run_once(cfg: RunConfig) -> dict:
         dollar_vol_lookback=cfg.lookback_days,
         long_only=cfg.long_only,
     )
+    # Log the device being used for YOLO inference to avoid confusion
+    try:
+        from backtest_yolo_events import get_logger
+        get_logger().info("Using device: %s", bt.device)
+    except Exception:
+        print(f"[INFO] Using device: {getattr(bt, 'device', 'cpu')}")
     if cfg.use_csv_universe:
         candidates = pd.read_csv(cfg.universe_csv_path)
         col = "ticker" if "ticker" in candidates.columns else candidates.columns[0]
@@ -476,6 +484,11 @@ def run_once(cfg: RunConfig) -> dict:
         if cfg.long_only and sig != "buy":
             continue
 
+        # Respect holding period: if we have an open trade for this symbol, skip any new trade
+        if sym.upper() in open_symbols:
+            print(f"[INFO] Skipping {sym}: currently in holding period from prior entry")
+            continue
+
         # Use cached price or fetch new one
         if sym in price_cache:
             price = price_cache[sym]
@@ -511,6 +524,7 @@ def run_once(cfg: RunConfig) -> dict:
             pos = positions[sym]
             already_long = (pos.side.lower() == "long")
             already_short = (pos.side.lower() == "short")
+            # Additionally, avoid flipping direction while holding (respect holding window)
             if (side == OrderSide.BUY and already_long) or (side == OrderSide.SELL and already_short):
                 print(f"[INFO] Skipping {sym}: already holding {pos.side}")
                 continue
