@@ -41,6 +41,34 @@
       "qty": 4,
       "entry_date": "2025-09-11",
       "exit_after": "2025-09-16"
+    },
+    {
+      "symbol": "T",
+      "side": "long",
+      "qty": 1403,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "TSLA",
+      "side": "long",
+      "qty": 112,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "DG",
+      "side": "long",
+      "qty": 99,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "VTRS",
+      "side": "long",
+      "qty": 2,
+      "entry_date": "2025-09-12",
+      "exit_after": "2025-09-17"
     }
   ]
 }
