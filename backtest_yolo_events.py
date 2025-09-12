@@ -1230,9 +1230,9 @@ def main(cfg: Config = Config()) -> None:
     # 1) Load model
     model = YOLO(cfg.model_path).to(cfg.device)
 
-    # 2) Build & screen universe
+    # 2) Build & screen universe (match fast trader behavior)
     candidates = build_universe_candidates(cfg)
-    tickers = screen_by_price_and_liquidity(
+    tickers, _screening_prices = screen_by_price_and_liquidity(
         candidates,
         min_price=cfg.min_price,
         max_price=cfg.max_price,
@@ -1241,8 +1241,19 @@ def main(cfg: Config = Config()) -> None:
         logger=log,
     )
     if not tickers:
-        log.error("No tickers passed the screen.")
-        return
+        log.warning("No tickers passed screen. Trying reliable fallback list...")
+        reliable_candidates = get_reliable_stock_list()
+        tickers, _screening_prices = screen_by_price_and_liquidity(
+            reliable_candidates,
+            min_price=cfg.min_price,
+            max_price=cfg.max_price,
+            min_dollar_vol=cfg.min_dollar_vol,
+            lookback_days=cfg.dollar_vol_lookback,
+            logger=log,
+        )
+        if not tickers:
+            log.error("No tickers passed the screen even with fallback list.")
+            return
 
     # 3) Download just what's needed
     prices_by_ticker = download_prices_batched(tickers, cfg)
