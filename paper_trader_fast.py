@@ -41,6 +41,7 @@ class RunConfig:
     max_trades_per_day: int = 50   # Increased to allow more trades per day
     long_only: bool = False        # Enable shorts - model detects both buy/sell signals
     holding_days: int = 5          # exit after this many trading days
+    cooldown_days_after_exit: int = 1  # do not re-enter the same symbol for this many days after exit
 
     # Sizing
     max_alloc_per_trade: float = 0.40  # % of equity per trade
@@ -63,7 +64,7 @@ def _now_et() -> datetime:
 def _load_state(path: Path) -> dict:
     if path.exists():
         return json.loads(path.read_text())
-    return {"open_trades": []}  # list of dicts: symbol, side, qty, entry_date, exit_after
+    return {"open_trades": [], "cooldowns": []}  # open_trades: list of dicts; cooldowns: list of dicts
 
 def _save_state(path: Path, state: dict) -> None:
     path.write_text(json.dumps(state, indent=2, default=str))
@@ -317,9 +318,10 @@ def run_once(cfg: RunConfig) -> dict:
                     "side": side,
                     "qty": int(abs(float(getattr(pos, "qty", 0)))) if str(getattr(pos, "qty", "0")) else 0,
                     "entry_date": str(today),
-                    "exit_after": str(today),
+                    # Honor configured holding period when backfilling unknown entries
+                    "exit_after": str(today + timedelta(days=cfg.holding_days)),
                 }
-                print(f"[WARN] Backfilled missing state for broker-held {symbol} ({side}); scheduling exit today")
+                print(f"[WARN] Backfilled missing state for broker-held {symbol} ({side}); scheduling exit after {cfg.holding_days} day(s)")
                 open_trades.append(synth_entry)
                 existing_keys.add(key)
     else:
@@ -327,6 +329,7 @@ def run_once(cfg: RunConfig) -> dict:
 
     closed_count = 0
     exit_orders: List[dict] = []
+    exited_today: set[str] = set()
     for tr in open_trades:
         sym = tr["symbol"]
         due = date.fromisoformat(tr["exit_after"])
@@ -369,13 +372,36 @@ def run_once(cfg: RunConfig) -> dict:
             else:
                 print(f"[DRY-RUN] Would close position {sym}")
             # Always remove from state when exit date has passed
+            exited_today.add(str(sym).upper())
         else:
             still_open.append(tr)
     
     print(f"[INFO] Exit summary: {len(open_trades) - len(still_open)} positions removed from state, {closed_count} positions closed in Alpaca")
     state["open_trades"] = still_open
+    # Maintain cooldowns to avoid immediate re-entry after exit
+    cooldowns: List[dict] = state.get("cooldowns", [])
+    # Drop expired cooldowns (until_date strictly before today)
+    try:
+        cooldowns = [c for c in cooldowns if date.fromisoformat(str(c.get("until_date"))) >= today]
+    except Exception:
+        cooldowns = []
+    for s in exited_today:
+        until = today + timedelta(days=cfg.cooldown_days_after_exit)
+        cooldowns.append({"symbol": s, "until_date": str(until)})
+    # Deduplicate by symbol, keep the farthest until_date
+    dedup: Dict[str, str] = {}
+    for c in cooldowns:
+        sym_u = str(c.get("symbol", "")).upper()
+        ud = str(c.get("until_date", str(today)))
+        if not sym_u:
+            continue
+        if sym_u not in dedup or date.fromisoformat(ud) > date.fromisoformat(dedup[sym_u]):
+            dedup[sym_u] = ud
+    state["cooldowns"] = [{"symbol": k, "until_date": v} for k, v in dedup.items()]
     # Symbols currently under a holding period (do not trade opposite or same direction)
     open_symbols = {str(t.get("symbol", "")).upper() for t in state.get("open_trades", [])}
+    cooldown_symbols = {str(c.get("symbol", "")).upper() for c in state.get("cooldowns", []) if date.fromisoformat(str(c.get("until_date"))) >= today}
+    blocked_symbols = open_symbols | cooldown_symbols
 
     # 2) Build & screen universe
     bt = BTConfig(
@@ -485,8 +511,8 @@ def run_once(cfg: RunConfig) -> dict:
             continue
 
         # Respect holding period: if we have an open trade for this symbol, skip any new trade
-        if sym.upper() in open_symbols:
-            print(f"[INFO] Skipping {sym}: currently in holding period from prior entry")
+        if sym.upper() in blocked_symbols:
+            print(f"[INFO] Skipping {sym}: holding/cooldown active")
             continue
 
         # Use cached price or fetch new one
