@@ -104,6 +104,34 @@
       "qty": 397,
       "entry_date": "2025-09-12",
       "exit_after": "2025-09-17"
+    },
+    {
+      "symbol": "AFL",
+      "side": "short",
+      "qty": 373,
+      "entry_date": "2025-09-15",
+      "exit_after": "2025-09-20"
+    },
+    {
+      "symbol": "EXPD",
+      "side": "long",
+      "qty": 330,
+      "entry_date": "2025-09-15",
+      "exit_after": "2025-09-20"
+    },
+    {
+      "symbol": "AAPL",
+      "side": "long",
+      "qty": 44,
+      "entry_date": "2025-09-15",
+      "exit_after": "2025-09-20"
+    },
+    {
+      "symbol": "HCSG",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-15",
+      "exit_after": "2025-09-20"
     }
   ]
 }
