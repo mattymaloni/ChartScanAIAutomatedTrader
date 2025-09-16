@@ -1,48 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "AOS",
-      "side": "long",
-      "qty": 344,
-      "entry_date": "2025-09-11",
-      "exit_after": "2025-09-16"
-    },
-    {
-      "symbol": "KMI",
-      "side": "short",
-      "qty": 1,
-      "entry_date": "2025-09-11",
-      "exit_after": "2025-09-16"
-    },
-    {
-      "symbol": "MGM",
-      "side": "long",
-      "qty": 1148,
-      "entry_date": "2025-09-11",
-      "exit_after": "2025-09-16"
-    },
-    {
-      "symbol": "CRL",
-      "side": "long",
-      "qty": 266,
-      "entry_date": "2025-09-11",
-      "exit_after": "2025-09-16"
-    },
-    {
-      "symbol": "KMI",
-      "side": "short",
-      "qty": 379,
-      "entry_date": "2025-09-11",
-      "exit_after": "2025-09-16"
-    },
-    {
-      "symbol": "NIO",
-      "side": "long",
-      "qty": 4,
-      "entry_date": "2025-09-11",
-      "exit_after": "2025-09-16"
-    },
-    {
       "symbol": "T",
       "side": "long",
       "qty": 1403,
@@ -188,7 +146,84 @@
       "qty": 62,
       "entry_date": "2025-09-15",
       "exit_after": "2025-09-20"
+    },
+    {
+      "symbol": "MAS",
+      "side": "positionside.long",
+      "qty": 546,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "VUG",
+      "side": "positionside.long",
+      "qty": 84,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "WELL",
+      "side": "positionside.long",
+      "qty": 62,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "KLAC",
+      "side": "long",
+      "qty": 40,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "ED",
+      "side": "short",
+      "qty": 416,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "CBRE",
+      "side": "long",
+      "qty": 65,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "UPRO",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "HOG",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
     }
   ],
-  "cooldowns": []
+  "cooldowns": [
+    {
+      "symbol": "AOS",
+      "until_date": "2025-09-17"
+    },
+    {
+      "symbol": "KMI",
+      "until_date": "2025-09-17"
+    },
+    {
+      "symbol": "CRL",
+      "until_date": "2025-09-17"
+    },
+    {
+      "symbol": "NIO",
+      "until_date": "2025-09-17"
+    },
+    {
+      "symbol": "MGM",
+      "until_date": "2025-09-17"
+    }
+  ]
 }
