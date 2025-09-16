@@ -202,6 +202,69 @@
       "qty": 1,
       "entry_date": "2025-09-16",
       "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "CBRE",
+      "side": "positionside.long",
+      "qty": 65,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "ED",
+      "side": "positionside.short",
+      "qty": 416,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "HOG",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "KLAC",
+      "side": "positionside.long",
+      "qty": 40,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "UPRO",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "RSG",
+      "side": "long",
+      "qty": 175,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "HIG",
+      "side": "long",
+      "qty": 305,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "ULTA",
+      "side": "long",
+      "qty": 19,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "SPXU",
+      "side": "short",
+      "qty": 27,
+      "entry_date": "2025-09-16",
+      "exit_after": "2025-09-21"
     }
   ],
   "cooldowns": [
