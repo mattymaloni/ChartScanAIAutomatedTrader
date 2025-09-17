@@ -237,6 +237,34 @@
       "qty": 917,
       "entry_date": "2025-09-17",
       "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "VZ",
+      "side": "positionside.short",
+      "qty": 917,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "RMD",
+      "side": "long",
+      "qty": 96,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "ZM",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "PTON",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
     }
   ],
   "cooldowns": [
