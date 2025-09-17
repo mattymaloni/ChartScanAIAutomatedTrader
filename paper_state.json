@@ -1,69 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "T",
-      "side": "long",
-      "qty": 1403,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "TSLA",
-      "side": "long",
-      "qty": 112,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "DG",
-      "side": "long",
-      "qty": 99,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "VTRS",
-      "side": "long",
-      "qty": 2,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "T",
-      "side": "long",
-      "qty": 676,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "GME",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "AIV",
-      "side": "short",
-      "qty": 5447,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "IPGP",
-      "side": "long",
-      "qty": 503,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
-      "symbol": "ARKG",
-      "side": "long",
-      "qty": 397,
-      "entry_date": "2025-09-12",
-      "exit_after": "2025-09-17"
-    },
-    {
       "symbol": "AFL",
       "side": "short",
       "qty": 373,
@@ -265,6 +202,41 @@
       "qty": 27,
       "entry_date": "2025-09-16",
       "exit_after": "2025-09-21"
+    },
+    {
+      "symbol": "HIG",
+      "side": "positionside.long",
+      "qty": 305,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "RSG",
+      "side": "positionside.long",
+      "qty": 175,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "SPXU",
+      "side": "positionside.short",
+      "qty": 27,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "ULTA",
+      "side": "positionside.long",
+      "qty": 19,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "VZ",
+      "side": "short",
+      "qty": 917,
+      "entry_date": "2025-09-17",
+      "exit_after": "2025-09-22"
     }
   ],
   "cooldowns": [
@@ -287,6 +259,38 @@
     {
       "symbol": "MGM",
       "until_date": "2025-09-17"
+    },
+    {
+      "symbol": "DG",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "AIV",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "TSLA",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "ARKG",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "GME",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "IPGP",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "VTRS",
+      "until_date": "2025-09-18"
+    },
+    {
+      "symbol": "T",
+      "until_date": "2025-09-18"
     }
   ]
 }
