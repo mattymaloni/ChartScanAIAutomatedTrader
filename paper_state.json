@@ -265,29 +265,30 @@
       "qty": 1,
       "entry_date": "2025-09-17",
       "exit_after": "2025-09-22"
+    },
+    {
+      "symbol": "PTON",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-18",
+      "exit_after": "2025-09-23"
+    },
+    {
+      "symbol": "RMD",
+      "side": "positionside.long",
+      "qty": 96,
+      "entry_date": "2025-09-18",
+      "exit_after": "2025-09-23"
+    },
+    {
+      "symbol": "ZM",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-18",
+      "exit_after": "2025-09-23"
     }
   ],
   "cooldowns": [
-    {
-      "symbol": "AOS",
-      "until_date": "2025-09-17"
-    },
-    {
-      "symbol": "KMI",
-      "until_date": "2025-09-17"
-    },
-    {
-      "symbol": "CRL",
-      "until_date": "2025-09-17"
-    },
-    {
-      "symbol": "NIO",
-      "until_date": "2025-09-17"
-    },
-    {
-      "symbol": "MGM",
-      "until_date": "2025-09-17"
-    },
     {
       "symbol": "DG",
       "until_date": "2025-09-18"
