@@ -286,40 +286,21 @@
       "qty": 1,
       "entry_date": "2025-09-18",
       "exit_after": "2025-09-23"
-    }
-  ],
-  "cooldowns": [
-    {
-      "symbol": "DG",
-      "until_date": "2025-09-18"
     },
     {
-      "symbol": "AIV",
-      "until_date": "2025-09-18"
-    },
-    {
-      "symbol": "TSLA",
-      "until_date": "2025-09-18"
-    },
-    {
-      "symbol": "ARKG",
-      "until_date": "2025-09-18"
-    },
-    {
-      "symbol": "GME",
-      "until_date": "2025-09-18"
+      "symbol": "TPR",
+      "side": "long",
+      "qty": 40,
+      "entry_date": "2025-09-19",
+      "exit_after": "2025-09-24"
     },
     {
       "symbol": "IPGP",
-      "until_date": "2025-09-18"
-    },
-    {
-      "symbol": "VTRS",
-      "until_date": "2025-09-18"
-    },
-    {
-      "symbol": "T",
-      "until_date": "2025-09-18"
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-19",
+      "exit_after": "2025-09-24"
     }
-  ]
+  ],
+  "cooldowns": []
 }
