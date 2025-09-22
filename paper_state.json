@@ -1,90 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "AFL",
-      "side": "short",
-      "qty": 373,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "EXPD",
-      "side": "long",
-      "qty": 330,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "AAPL",
-      "side": "long",
-      "qty": 44,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "HCSG",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "LH",
-      "side": "long",
-      "qty": 146,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "VOX",
-      "side": "long",
-      "qty": 212,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "ANET",
-      "side": "long",
-      "qty": 73,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "MEC",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "LUMN",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "VUG",
-      "side": "long",
-      "qty": 84,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "MAS",
-      "side": "long",
-      "qty": 546,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
-      "symbol": "WELL",
-      "side": "long",
-      "qty": 62,
-      "entry_date": "2025-09-15",
-      "exit_after": "2025-09-20"
-    },
-    {
       "symbol": "MAS",
       "side": "positionside.long",
       "qty": 546,
@@ -102,41 +18,6 @@
       "symbol": "WELL",
       "side": "positionside.long",
       "qty": 62,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "KLAC",
-      "side": "long",
-      "qty": 40,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "ED",
-      "side": "short",
-      "qty": 416,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "CBRE",
-      "side": "long",
-      "qty": 65,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "UPRO",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "HOG",
-      "side": "long",
-      "qty": 1,
       "entry_date": "2025-09-16",
       "exit_after": "2025-09-21"
     },
@@ -176,34 +57,6 @@
       "exit_after": "2025-09-21"
     },
     {
-      "symbol": "RSG",
-      "side": "long",
-      "qty": 175,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "HIG",
-      "side": "long",
-      "qty": 305,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "ULTA",
-      "side": "long",
-      "qty": 19,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
-      "symbol": "SPXU",
-      "side": "short",
-      "qty": 27,
-      "entry_date": "2025-09-16",
-      "exit_after": "2025-09-21"
-    },
-    {
       "symbol": "HIG",
       "side": "positionside.long",
       "qty": 305,
@@ -233,36 +86,8 @@
     },
     {
       "symbol": "VZ",
-      "side": "short",
-      "qty": 917,
-      "entry_date": "2025-09-17",
-      "exit_after": "2025-09-22"
-    },
-    {
-      "symbol": "VZ",
       "side": "positionside.short",
       "qty": 917,
-      "entry_date": "2025-09-17",
-      "exit_after": "2025-09-22"
-    },
-    {
-      "symbol": "RMD",
-      "side": "long",
-      "qty": 96,
-      "entry_date": "2025-09-17",
-      "exit_after": "2025-09-22"
-    },
-    {
-      "symbol": "ZM",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-17",
-      "exit_after": "2025-09-22"
-    },
-    {
-      "symbol": "PTON",
-      "side": "long",
-      "qty": 1,
       "entry_date": "2025-09-17",
       "exit_after": "2025-09-22"
     },
@@ -316,5 +141,106 @@
       "exit_after": "2025-09-24"
     }
   ],
-  "cooldowns": []
+  "cooldowns": [
+    {
+      "symbol": "VOX",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "MAS",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "HCSG",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "ANET",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "VUG",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "AAPL",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "SPXU",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "ULTA",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "AFL",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "RMD",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "LH",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "ED",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "HOG",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "UPRO",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "MEC",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "CBRE",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "LUMN",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "HIG",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "PTON",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "EXPD",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "RSG",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "VZ",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "ZM",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "KLAC",
+      "until_date": "2025-09-23"
+    },
+    {
+      "symbol": "WELL",
+      "until_date": "2025-09-23"
+    }
+  ]
 }

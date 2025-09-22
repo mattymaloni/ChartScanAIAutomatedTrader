@@ -1,0 +1,17 @@
+symbol,side,qty,estimated_price,confidence,event_time,order_id,action
+VUG,sell,84,,,2025-09-22,885ecd53-20e5-4e2d-9fe2-d6c35210b088,exit
+MAS,sell,546,,,2025-09-22,39e0ff80-4236-4a5e-acfd-a56ef56ea50f,exit
+WELL,sell,62,,,2025-09-22,7c164394-cc45-425f-8185-dac1b3a88854,exit
+KLAC,sell,40,,,2025-09-22,e258e759-8221-4791-874d-9c07d749e345,exit
+ED,buy,416,,,2025-09-22,4e8b6a12-9e72-4703-b43a-6f98c98ef742,exit
+CBRE,sell,65,,,2025-09-22,4276c792-b1c3-4f0f-8cff-8817d61d2db6,exit
+UPRO,sell,1,,,2025-09-22,2be77984-2202-483f-a2bb-70e97570752d,exit
+HOG,sell,1,,,2025-09-22,cd06a300-5b59-4ea9-a108-296ac8869a27,exit
+RSG,sell,175,,,2025-09-22,3fbac97d-2a4f-4ce7-8cf4-337a1aa51207,exit
+HIG,sell,305,,,2025-09-22,ddf10b07-d760-48c1-b225-49af240d86db,exit
+ULTA,sell,19,,,2025-09-22,2f78f642-2ed0-4c67-8551-72157875a5bf,exit
+SPXU,buy,27,,,2025-09-22,bb613805-2a3d-4942-acc8-49bfcd3af79e,exit
+VZ,buy,917,,,2025-09-22,6cfd71d8-ce34-4b89-bbe4-586613ceff48,exit
+RMD,sell,96,,,2025-09-22,1354fe00-389a-47c9-8038-f69b41619f7d,exit
+ZM,sell,1,,,2025-09-22,e029cfd2-0eab-4ed8-b774-86eba7fab391,exit
+PTON,sell,1,,,2025-09-22,f8cefe2f-f3b8-43fe-b43c-fc403588168a,exit
