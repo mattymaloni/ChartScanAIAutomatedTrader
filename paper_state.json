@@ -1,27 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "PTON",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-18",
-      "exit_after": "2025-09-23"
-    },
-    {
-      "symbol": "RMD",
-      "side": "positionside.long",
-      "qty": 96,
-      "entry_date": "2025-09-18",
-      "exit_after": "2025-09-23"
-    },
-    {
-      "symbol": "ZM",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-18",
-      "exit_after": "2025-09-23"
-    },
-    {
       "symbol": "TPR",
       "side": "long",
       "qty": 40,
@@ -48,6 +27,41 @@
       "qty": 40,
       "entry_date": "2025-09-19",
       "exit_after": "2025-09-24"
+    },
+    {
+      "symbol": "AIV",
+      "side": "short",
+      "qty": 5231,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "NIO",
+      "side": "long",
+      "qty": 5890,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "FDX",
+      "side": "short",
+      "qty": 44,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "MGM",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "HBI",
+      "side": "long",
+      "qty": 4,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
     }
   ],
   "cooldowns": [
@@ -89,7 +103,7 @@
     },
     {
       "symbol": "RMD",
-      "until_date": "2025-09-23"
+      "until_date": "2025-09-24"
     },
     {
       "symbol": "LH",
@@ -125,7 +139,7 @@
     },
     {
       "symbol": "PTON",
-      "until_date": "2025-09-23"
+      "until_date": "2025-09-24"
     },
     {
       "symbol": "EXPD",
@@ -141,7 +155,7 @@
     },
     {
       "symbol": "ZM",
-      "until_date": "2025-09-23"
+      "until_date": "2025-09-24"
     },
     {
       "symbol": "KLAC",
