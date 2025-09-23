@@ -62,6 +62,76 @@
       "qty": 4,
       "entry_date": "2025-09-23",
       "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "AIV",
+      "side": "positionside.short",
+      "qty": 5231,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "FDX",
+      "side": "positionside.short",
+      "qty": 44,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "HBI",
+      "side": "positionside.long",
+      "qty": 4,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "MGM",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "NIO",
+      "side": "positionside.long",
+      "qty": 5890,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "UDR",
+      "side": "short",
+      "qty": 1091,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "SHW",
+      "side": "long",
+      "qty": 117,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "IR",
+      "side": "long",
+      "qty": 128,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "KMI",
+      "side": "short",
+      "qty": 2,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "BBBY",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-23",
+      "exit_after": "2025-09-28"
     }
   ],
   "cooldowns": [
