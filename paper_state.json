@@ -1,20 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "TPR",
-      "side": "long",
-      "qty": 40,
-      "entry_date": "2025-09-19",
-      "exit_after": "2025-09-24"
-    },
-    {
-      "symbol": "IPGP",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-19",
-      "exit_after": "2025-09-24"
-    },
-    {
       "symbol": "IPGP",
       "side": "positionside.long",
       "qty": 1,
@@ -132,108 +118,84 @@
       "qty": 1,
       "entry_date": "2025-09-23",
       "exit_after": "2025-09-28"
+    },
+    {
+      "symbol": "BBBY",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "IR",
+      "side": "positionside.long",
+      "qty": 128,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "KMI",
+      "side": "positionside.short",
+      "qty": 2,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "SHW",
+      "side": "positionside.long",
+      "qty": 117,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "UDR",
+      "side": "positionside.short",
+      "qty": 1091,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "CRL",
+      "side": "long",
+      "qty": 68,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "TSN",
+      "side": "short",
+      "qty": 2,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "CSX",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
     }
   ],
   "cooldowns": [
     {
-      "symbol": "VOX",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "MAS",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "HCSG",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "ANET",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "VUG",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "AAPL",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "SPXU",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "ULTA",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "AFL",
-      "until_date": "2025-09-23"
-    },
-    {
       "symbol": "RMD",
       "until_date": "2025-09-24"
-    },
-    {
-      "symbol": "LH",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "ED",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "HOG",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "UPRO",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "MEC",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "CBRE",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "LUMN",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "HIG",
-      "until_date": "2025-09-23"
     },
     {
       "symbol": "PTON",
       "until_date": "2025-09-24"
     },
     {
-      "symbol": "EXPD",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "RSG",
-      "until_date": "2025-09-23"
-    },
-    {
-      "symbol": "VZ",
-      "until_date": "2025-09-23"
-    },
-    {
       "symbol": "ZM",
       "until_date": "2025-09-24"
     },
     {
-      "symbol": "KLAC",
-      "until_date": "2025-09-23"
+      "symbol": "IPGP",
+      "until_date": "2025-09-25"
     },
     {
-      "symbol": "WELL",
-      "until_date": "2025-09-23"
+      "symbol": "TPR",
+      "until_date": "2025-09-25"
     }
   ]
 }
