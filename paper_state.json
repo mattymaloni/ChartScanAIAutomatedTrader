@@ -1,20 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "IPGP",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-19",
-      "exit_after": "2025-09-24"
-    },
-    {
-      "symbol": "TPR",
-      "side": "positionside.long",
-      "qty": 40,
-      "entry_date": "2025-09-19",
-      "exit_after": "2025-09-24"
-    },
-    {
       "symbol": "AIV",
       "side": "short",
       "qty": 5231,
@@ -172,6 +158,27 @@
       "symbol": "CSX",
       "side": "long",
       "qty": 1,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "CRL",
+      "side": "positionside.long",
+      "qty": 68,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "CSX",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-24",
+      "exit_after": "2025-09-29"
+    },
+    {
+      "symbol": "TSN",
+      "side": "positionside.short",
+      "qty": 2,
       "entry_date": "2025-09-24",
       "exit_after": "2025-09-29"
     }
