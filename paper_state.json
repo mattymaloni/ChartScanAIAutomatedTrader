@@ -251,16 +251,21 @@
       "qty": 1,
       "entry_date": "2025-09-25",
       "exit_after": "2025-09-30"
-    }
-  ],
-  "cooldowns": [
-    {
-      "symbol": "IPGP",
-      "until_date": "2025-09-25"
     },
     {
-      "symbol": "TPR",
-      "until_date": "2025-09-25"
+      "symbol": "HOG",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-26",
+      "exit_after": "2025-10-01"
+    },
+    {
+      "symbol": "PZZA",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-26",
+      "exit_after": "2025-10-01"
     }
-  ]
+  ],
+  "cooldowns": []
 }
