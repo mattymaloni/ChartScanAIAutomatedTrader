@@ -2,41 +2,6 @@
   "open_trades": [
     {
       "symbol": "AIV",
-      "side": "short",
-      "qty": 5231,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "NIO",
-      "side": "long",
-      "qty": 5890,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "FDX",
-      "side": "short",
-      "qty": 44,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "MGM",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "HBI",
-      "side": "long",
-      "qty": 4,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "AIV",
       "side": "positionside.short",
       "qty": 5231,
       "entry_date": "2025-09-23",
@@ -67,41 +32,6 @@
       "symbol": "NIO",
       "side": "positionside.long",
       "qty": 5890,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "UDR",
-      "side": "short",
-      "qty": 1091,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "SHW",
-      "side": "long",
-      "qty": 117,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "IR",
-      "side": "long",
-      "qty": 128,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "KMI",
-      "side": "short",
-      "qty": 2,
-      "entry_date": "2025-09-23",
-      "exit_after": "2025-09-28"
-    },
-    {
-      "symbol": "BBBY",
-      "side": "long",
-      "qty": 1,
       "entry_date": "2025-09-23",
       "exit_after": "2025-09-28"
     },
@@ -137,27 +67,6 @@
       "symbol": "UDR",
       "side": "positionside.short",
       "qty": 1091,
-      "entry_date": "2025-09-24",
-      "exit_after": "2025-09-29"
-    },
-    {
-      "symbol": "CRL",
-      "side": "long",
-      "qty": 68,
-      "entry_date": "2025-09-24",
-      "exit_after": "2025-09-29"
-    },
-    {
-      "symbol": "TSN",
-      "side": "short",
-      "qty": 2,
-      "entry_date": "2025-09-24",
-      "exit_after": "2025-09-29"
-    },
-    {
-      "symbol": "CSX",
-      "side": "long",
-      "qty": 1,
       "entry_date": "2025-09-24",
       "exit_after": "2025-09-29"
     },
@@ -267,5 +176,58 @@
       "exit_after": "2025-10-01"
     }
   ],
-  "cooldowns": []
+  "cooldowns": [
+    {
+      "symbol": "FDX",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "HBI",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "IR",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "AIV",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "BBBY",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "TSN",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "CRL",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "KMI",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "SHW",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "CSX",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "NIO",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "UDR",
+      "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "MGM",
+      "until_date": "2025-09-30"
+    }
+  ]
 }

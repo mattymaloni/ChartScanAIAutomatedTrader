@@ -1,0 +1,14 @@
+symbol,side,qty,estimated_price,confidence,event_time,order_id,action
+AIV,buy,5231,,,2025-09-29,508baec4-5abe-4724-94b9-30a824fb0d14,exit
+NIO,sell,5890,,,2025-09-29,af1d8d2e-3445-4b90-bdb7-8bc621b2da4f,exit
+FDX,buy,44,,,2025-09-29,cbb706c8-83db-4325-873a-f7fe0d8578c8,exit
+MGM,sell,1,,,2025-09-29,e732a3b6-98c4-4d85-956a-65736a8007cd,exit
+HBI,sell,4,,,2025-09-29,72c823b8-20b0-4e74-8816-6f3da5fa9266,exit
+UDR,buy,1091,,,2025-09-29,8ed9cfb1-85d8-4109-a674-6fc951fb7b0f,exit
+SHW,sell,117,,,2025-09-29,7741c807-965d-4e6d-b0b2-8cee2e149b55,exit
+IR,sell,128,,,2025-09-29,a3fb9ee2-6810-43cb-92d1-c1b2cbbbb59d,exit
+KMI,buy,2,,,2025-09-29,4d4b6f05-faa0-4afc-ab39-e373b3410441,exit
+BBBY,sell,1,,,2025-09-29,dde278ec-234a-4ea0-976c-cf9ee62aee1a,exit
+CRL,sell,68,,,2025-09-29,a0676fbe-5ed2-42aa-98aa-cfe9aa61fdd4,exit
+TSN,buy,2,,,2025-09-29,ddd369e2-7ad8-4c3c-a4dc-6d03fea5e872,exit
+CSX,sell,1,,,2025-09-29,1df619a6-a837-434b-93bb-211f724ac76f,exit
