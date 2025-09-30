@@ -1,34 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "TSLA",
-      "side": "long",
-      "qty": 13,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "AFL",
-      "side": "short",
-      "qty": 3,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "MOS",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "HCSG",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
       "symbol": "AFL",
       "side": "positionside.short",
       "qty": 3,
@@ -57,20 +29,6 @@
       "exit_after": "2025-09-30"
     },
     {
-      "symbol": "PZZA",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "HOG",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
       "symbol": "HOG",
       "side": "positionside.long",
       "qty": 1,
@@ -83,6 +41,41 @@
       "qty": 1,
       "entry_date": "2025-09-26",
       "exit_after": "2025-10-01"
+    },
+    {
+      "symbol": "KLAC",
+      "side": "long",
+      "qty": 38,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "WM",
+      "side": "short",
+      "qty": 187,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "ARKG",
+      "side": "long",
+      "qty": 413,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "MEC",
+      "side": "short",
+      "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "LUMN",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
     }
   ],
   "cooldowns": [
@@ -137,6 +130,30 @@
     {
       "symbol": "MGM",
       "until_date": "2025-09-30"
+    },
+    {
+      "symbol": "HOG",
+      "until_date": "2025-10-01"
+    },
+    {
+      "symbol": "TSLA",
+      "until_date": "2025-10-01"
+    },
+    {
+      "symbol": "PZZA",
+      "until_date": "2025-10-01"
+    },
+    {
+      "symbol": "AFL",
+      "until_date": "2025-10-01"
+    },
+    {
+      "symbol": "HCSG",
+      "until_date": "2025-10-01"
+    },
+    {
+      "symbol": "MOS",
+      "until_date": "2025-10-01"
     }
   ]
 }
