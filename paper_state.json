@@ -1,34 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "AFL",
-      "side": "positionside.short",
-      "qty": 3,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "HCSG",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "MOS",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
-      "symbol": "TSLA",
-      "side": "positionside.long",
-      "qty": 13,
-      "entry_date": "2025-09-25",
-      "exit_after": "2025-09-30"
-    },
-    {
       "symbol": "HOG",
       "side": "positionside.long",
       "qty": 1,
@@ -74,6 +46,90 @@
       "symbol": "LUMN",
       "side": "long",
       "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "ARKG",
+      "side": "positionside.long",
+      "qty": 413,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "KLAC",
+      "side": "positionside.long",
+      "qty": 38,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "LUMN",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "MEC",
+      "side": "positionside.short",
+      "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "WM",
+      "side": "positionside.short",
+      "qty": 187,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "RJF",
+      "side": "long",
+      "qty": 233,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "IPGP",
+      "side": "long",
+      "qty": 522,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "URI",
+      "side": "long",
+      "qty": 10,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "RSG",
+      "side": "long",
+      "qty": 3,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "EXPD",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "LUV",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-09-30",
+      "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "PTON",
+      "side": "long",
+      "qty": 2,
       "entry_date": "2025-09-30",
       "exit_after": "2025-10-05"
     }
