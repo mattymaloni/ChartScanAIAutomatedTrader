@@ -1,20 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "HOG",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-26",
-      "exit_after": "2025-10-01"
-    },
-    {
-      "symbol": "PZZA",
-      "side": "positionside.long",
-      "qty": 1,
-      "entry_date": "2025-09-26",
-      "exit_after": "2025-10-01"
-    },
-    {
       "symbol": "KLAC",
       "side": "long",
       "qty": 38,
@@ -132,64 +118,89 @@
       "qty": 2,
       "entry_date": "2025-09-30",
       "exit_after": "2025-10-05"
+    },
+    {
+      "symbol": "EXPD",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "IPGP",
+      "side": "positionside.long",
+      "qty": 522,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "LUV",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "PTON",
+      "side": "positionside.long",
+      "qty": 2,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "RJF",
+      "side": "positionside.long",
+      "qty": 233,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "RSG",
+      "side": "positionside.long",
+      "qty": 3,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "URI",
+      "side": "positionside.long",
+      "qty": 10,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "AIV",
+      "side": "short",
+      "qty": 5202,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "GWW",
+      "side": "long",
+      "qty": 43,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "IBM",
+      "side": "long",
+      "qty": 37,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "CSX",
+      "side": "long",
+      "qty": 4,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
     }
   ],
   "cooldowns": [
     {
-      "symbol": "FDX",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "HBI",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "IR",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "AIV",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "BBBY",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "TSN",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "CRL",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "KMI",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "SHW",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "CSX",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "NIO",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "UDR",
-      "until_date": "2025-09-30"
-    },
-    {
-      "symbol": "MGM",
-      "until_date": "2025-09-30"
-    },
-    {
       "symbol": "HOG",
-      "until_date": "2025-10-01"
+      "until_date": "2025-10-02"
     },
     {
       "symbol": "TSLA",
@@ -197,7 +208,7 @@
     },
     {
       "symbol": "PZZA",
-      "until_date": "2025-10-01"
+      "until_date": "2025-10-02"
     },
     {
       "symbol": "AFL",
