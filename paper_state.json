@@ -195,6 +195,48 @@
       "qty": 4,
       "entry_date": "2025-10-01",
       "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "AIV",
+      "side": "positionside.short",
+      "qty": 5202,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "CSX",
+      "side": "positionside.long",
+      "qty": 4,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "GWW",
+      "side": "positionside.long",
+      "qty": 43,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "IBM",
+      "side": "positionside.long",
+      "qty": 37,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "SHW",
+      "side": "long",
+      "qty": 97,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "MGM",
+      "side": "long",
+      "qty": 2,
+      "entry_date": "2025-10-01",
+      "exit_after": "2025-10-06"
     }
   ],
   "cooldowns": [
