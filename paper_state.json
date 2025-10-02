@@ -237,6 +237,20 @@
       "qty": 2,
       "entry_date": "2025-10-01",
       "exit_after": "2025-10-06"
+    },
+    {
+      "symbol": "MGM",
+      "side": "positionside.long",
+      "qty": 2,
+      "entry_date": "2025-10-02",
+      "exit_after": "2025-10-07"
+    },
+    {
+      "symbol": "SHW",
+      "side": "positionside.long",
+      "qty": 97,
+      "entry_date": "2025-10-02",
+      "exit_after": "2025-10-07"
     }
   ],
   "cooldowns": [
@@ -245,24 +259,8 @@
       "until_date": "2025-10-02"
     },
     {
-      "symbol": "TSLA",
-      "until_date": "2025-10-01"
-    },
-    {
       "symbol": "PZZA",
       "until_date": "2025-10-02"
-    },
-    {
-      "symbol": "AFL",
-      "until_date": "2025-10-01"
-    },
-    {
-      "symbol": "HCSG",
-      "until_date": "2025-10-01"
-    },
-    {
-      "symbol": "MOS",
-      "until_date": "2025-10-01"
     }
   ]
 }
