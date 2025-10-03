@@ -253,14 +253,5 @@
       "exit_after": "2025-10-07"
     }
   ],
-  "cooldowns": [
-    {
-      "symbol": "HOG",
-      "until_date": "2025-10-02"
-    },
-    {
-      "symbol": "PZZA",
-      "until_date": "2025-10-02"
-    }
-  ]
+  "cooldowns": []
 }
