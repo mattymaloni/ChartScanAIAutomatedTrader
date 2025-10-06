@@ -1,41 +1,6 @@
 {
   "open_trades": [
     {
-      "symbol": "KLAC",
-      "side": "long",
-      "qty": 38,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "WM",
-      "side": "short",
-      "qty": 187,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "ARKG",
-      "side": "long",
-      "qty": 413,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "MEC",
-      "side": "short",
-      "qty": 1,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "LUMN",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
       "symbol": "ARKG",
       "side": "positionside.long",
       "qty": 413,
@@ -67,55 +32,6 @@
       "symbol": "WM",
       "side": "positionside.short",
       "qty": 187,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "RJF",
-      "side": "long",
-      "qty": 233,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "IPGP",
-      "side": "long",
-      "qty": 522,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "URI",
-      "side": "long",
-      "qty": 10,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "RSG",
-      "side": "long",
-      "qty": 3,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "EXPD",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "LUV",
-      "side": "long",
-      "qty": 1,
-      "entry_date": "2025-09-30",
-      "exit_after": "2025-10-05"
-    },
-    {
-      "symbol": "PTON",
-      "side": "long",
-      "qty": 2,
       "entry_date": "2025-09-30",
       "exit_after": "2025-10-05"
     },
@@ -170,34 +86,6 @@
     },
     {
       "symbol": "AIV",
-      "side": "short",
-      "qty": 5202,
-      "entry_date": "2025-10-01",
-      "exit_after": "2025-10-06"
-    },
-    {
-      "symbol": "GWW",
-      "side": "long",
-      "qty": 43,
-      "entry_date": "2025-10-01",
-      "exit_after": "2025-10-06"
-    },
-    {
-      "symbol": "IBM",
-      "side": "long",
-      "qty": 37,
-      "entry_date": "2025-10-01",
-      "exit_after": "2025-10-06"
-    },
-    {
-      "symbol": "CSX",
-      "side": "long",
-      "qty": 4,
-      "entry_date": "2025-10-01",
-      "exit_after": "2025-10-06"
-    },
-    {
-      "symbol": "AIV",
       "side": "positionside.short",
       "qty": 5202,
       "entry_date": "2025-10-01",
@@ -221,20 +109,6 @@
       "symbol": "IBM",
       "side": "positionside.long",
       "qty": 37,
-      "entry_date": "2025-10-01",
-      "exit_after": "2025-10-06"
-    },
-    {
-      "symbol": "SHW",
-      "side": "long",
-      "qty": 97,
-      "entry_date": "2025-10-01",
-      "exit_after": "2025-10-06"
-    },
-    {
-      "symbol": "MGM",
-      "side": "long",
-      "qty": 2,
       "entry_date": "2025-10-01",
       "exit_after": "2025-10-06"
     },
@@ -253,5 +127,78 @@
       "exit_after": "2025-10-07"
     }
   ],
-  "cooldowns": []
+  "cooldowns": [
+    {
+      "symbol": "CSX",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "KLAC",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "PTON",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "EXPD",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "GWW",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "MGM",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "SHW",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "MEC",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "LUMN",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "ARKG",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "WM",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "RSG",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "LUV",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "IBM",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "RJF",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "URI",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "AIV",
+      "until_date": "2025-10-07"
+    },
+    {
+      "symbol": "IPGP",
+      "until_date": "2025-10-07"
+    }
+  ]
 }
