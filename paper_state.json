@@ -1,18 +1,46 @@
 {
   "open_trades": [
     {
-      "symbol": "MGM",
-      "side": "positionside.long",
-      "qty": 2,
-      "entry_date": "2025-10-02",
-      "exit_after": "2025-10-07"
+      "symbol": "T",
+      "side": "long",
+      "qty": 1660,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
     },
     {
-      "symbol": "SHW",
-      "side": "positionside.long",
-      "qty": 97,
-      "entry_date": "2025-10-02",
-      "exit_after": "2025-10-07"
+      "symbol": "LW",
+      "side": "long",
+      "qty": 677,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "LH",
+      "side": "long",
+      "qty": 39,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "TME",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "NIO",
+      "side": "long",
+      "qty": 2,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "NWL",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
     }
   ],
   "cooldowns": [
@@ -38,11 +66,11 @@
     },
     {
       "symbol": "MGM",
-      "until_date": "2025-10-07"
+      "until_date": "2025-10-08"
     },
     {
       "symbol": "SHW",
-      "until_date": "2025-10-07"
+      "until_date": "2025-10-08"
     },
     {
       "symbol": "MEC",
