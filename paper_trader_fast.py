@@ -1,16 +1,20 @@
-# paper_trader.py
-# SPDX-License-Identifier: MIT
-from __future__ import annotations
-
+#!/usr/bin/env python3
+"""
+ChartScanAI Live Paper Trader - Matches backtest logic exactly
+Scans daily, holds 5 trading days, enters at next open, exits at close
+"""
 import json
 import os
-from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 from typing import List, Dict, Optional
+from io import BytesIO
 
 import pandas as pd
 import yfinance as yf
+from PIL import Image
+import matplotlib.pyplot as plt
+import mplfinance as mpf
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
@@ -18,68 +22,36 @@ from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.models import Position
 
 from ultralytics import YOLO
+from trading_config import TradingConfig
 
-# Reuse your utilities
-from backtest_yolo_events import (
-    Config as BTConfig,
-    build_universe_candidates,
-    screen_by_price_and_liquidity,
-    scan_right_edge_signals,
-)
 
-# ---------- Config ----------
-@dataclass
-class RunConfig:
-    # Model / signals
-    model_path: str = "weights/custom_yolov8.pt"
-    interval: str = "1d"           # '1d' or '1h' (paper bot expects '1d')
-    chunk_size: int = 180
-    min_price: float = 5.0
-    max_price: float = 3000.0
-    min_dollar_vol: float = 1_000_000  # Lowered to 1M to include more stocks
-    lookback_days: int = 70
-    max_trades_per_day: int = 50   # Increased to allow more trades per day
-    long_only: bool = False        # Enable shorts - model detects both buy/sell signals
-    holding_days: int = 5          # exit after this many trading days
-    cooldown_days_after_exit: int = 1  # do not re-enter the same symbol for this many days after exit
-
-    # Sizing
-    max_alloc_per_trade: float = 0.40  # % of equity per trade
-    max_portfolio_day_cap: float = 0.90  # max % equity used for all new trades today
-
-    # Universe
-    use_csv_universe: bool = False
-    universe_csv_path: str = "tickers.csv"
-    max_universe_size: int = 1000  # Scan top 1000 stocks
-
-    # Files
-    state_path: Path = Path("paper_state.json")
-    runs_dir: Path = Path("daily_runs")
-
-# ---------- Helpers ----------
+# ========== Utilities ==========
 def _now_et() -> datetime:
-    # GitHub Actions runs in UTC; we just need a stable timestamp
+    """Get current time in UTC (GitHub Actions timezone)"""
     return datetime.now(timezone.utc)
 
+
 def _load_state(path: Path) -> dict:
+    """Load persisted state"""
     if path.exists():
         return json.loads(path.read_text())
-    return {"open_trades": [], "cooldowns": []}  # open_trades: list of dicts; cooldowns: list of dicts
+    return {"open_trades": [], "cooldowns": []}
+
 
 def _save_state(path: Path, state: dict) -> None:
+    """Save state to disk"""
     path.write_text(json.dumps(state, indent=2, default=str))
 
+
 def _clear_yfinance_cache():
-    """Clear yfinance cache to prevent corrupted data issues"""
+    """Clear yfinance cache to prevent corrupted data"""
     try:
         import shutil
-        import os
         import platform
         
-        # Different cache locations for different OS
-        if platform.system() == "Darwin":  # macOS
+        if platform.system() == "Darwin":
             cache_dirs = ["~/Library/Caches/py-yfinance"]
-        else:  # Linux/Ubuntu (GitHub Actions)
+        else:
             cache_dirs = ["~/.cache/py-yfinance", "~/.cache/yfinance"]
             
         for cache_path in cache_dirs:
@@ -88,48 +60,57 @@ def _clear_yfinance_cache():
                 shutil.rmtree(cache_dir)
                 print(f"[INFO] Cleared yfinance cache: {cache_dir}")
     except Exception as e:
-        print(f"[WARN] Failed to clear yfinance cache: {e}")
+        print(f"[WARN] Failed to clear cache: {e}")
+
+
+def add_trading_days(start_date: date, days: int) -> date:
+    """Add N trading days (Mon-Fri only)"""
+    current = start_date
+    remaining = days
+    while remaining > 0:
+        current += timedelta(days=1)
+        if current.weekday() < 5:  # Weekday
+            remaining -= 1
+    return current
+
 
 def _latest_close_price(symbol: str) -> Optional[float]:
+    """Get latest close price with retries"""
     import os
     ci_env = os.environ.get('CI', '').lower() in ('true', '1', 'yes')
     github_actions = os.environ.get('GITHUB_ACTIONS', '').lower() in ('true', '1', 'yes')
     is_ci = ci_env or github_actions
-    max_retries = 8 if is_ci else 5  # Even more retries for CI
+    max_retries = 8 if is_ci else 5
     
     for retry in range(max_retries):
         try:
-            # Add random delay for CI to avoid coordinated requests
             if is_ci and retry > 0:
                 import random
                 import time
-                random_delay = random.uniform(2, 8)
-                time.sleep(random_delay)
+                time.sleep(random.uniform(2, 8))
             
-            # More conservative settings for CI
             df = yf.download(
                 symbol, 
-                period="2d",  # Shorter period to reduce load
+                period="2d",
                 interval="1d", 
                 progress=False, 
                 auto_adjust=False,
-                timeout=45 if is_ci else 30,  # Longer timeout for CI
-                show_errors=False  # Suppress yfinance error messages
+                timeout=45 if is_ci else 30,
+                show_errors=False
             )
+            
             if df is None or df.empty:
                 if retry < max_retries - 1:
                     import time
-                    time.sleep(3)  # Longer delay
+                    time.sleep(3)
                     continue
                 return None
             
-            # Handle MultiIndex columns (when downloading single ticker)
-            import pandas as pd
+            # Handle MultiIndex columns
             if isinstance(df.columns, pd.MultiIndex):
-                # For single ticker, columns are like ('Close', 'AAPL')
                 close_col = None
                 for col in df.columns:
-                    if col[0] == 'Close':  # First level is 'Close'
+                    if col[0] == 'Close':
                         close_col = col
                         break
                 if close_col is None:
@@ -140,7 +121,6 @@ def _latest_close_price(symbol: str) -> Optional[float]:
                     return None
                 close_series = df[close_col]
             else:
-                # Handle simple columns
                 if "Close" not in df.columns:
                     if retry < max_retries - 1:
                         import time
@@ -156,16 +136,14 @@ def _latest_close_price(symbol: str) -> Optional[float]:
                     continue
                 return None
                 
-            # Get the last valid close price
             last_close = close_series.dropna().iloc[-1]
             return float(last_close)
             
         except Exception as e:
             if retry < max_retries - 1:
                 import time
-                # Progressive delays with randomization for CI
                 if is_ci:
-                    base_delay = 15 + (retry * 5)  # 15s, 20s, 25s, 30s, 35s...
+                    base_delay = 15 + (retry * 5)
                     import random
                     jitter = random.uniform(0, 5)
                     time.sleep(base_delay + jitter)
@@ -173,75 +151,39 @@ def _latest_close_price(symbol: str) -> Optional[float]:
                     time.sleep(5 + (2 ** retry))
                 continue
             
-            # Final fallback: try a different approach
-            if is_ci and "json" in str(e).lower():
-                try:
-                    print(f"[INFO] Trying alternative approach for {symbol}...")
-                    import yfinance as yf
-                    ticker_obj = yf.Ticker(symbol)
-                    hist = ticker_obj.history(period="1d")
-                    if not hist.empty:
-                        return float(hist['Close'].iloc[-1])
-                except Exception as fallback_e:
-                    print(f"[WARN] Fallback also failed for {symbol}: {fallback_e}")
-            
-            print(f"[WARN] Failed to get ticker '{symbol}' reason: {e}")
+            print(f"[WARN] Failed to get price for {symbol}: {e}")
             return None
 
-def _qty_for_notional(price: Optional[float], notional: float) -> int:
-    if price is None or price <= 0:
-        return 0
-    return max(int(notional // price), 0)
 
 def _alpaca_client_from_env() -> TradingClient:
-    # Using paper=True directs SDK to paper endpoint; keys from env
+    """Create Alpaca client from environment variables"""
     api_key = os.environ.get("ALPACA_API_KEY_ID")
     api_secret = os.environ.get("ALPACA_API_SECRET_KEY")
     
     if not api_key or not api_secret:
-        print("[WARN] Alpaca API keys not found. Running in DRY RUN mode.")
-        # Return a mock client or handle gracefully
-        raise ValueError("Alpaca API keys not configured. Set ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY environment variables.")
+        raise ValueError("Alpaca API keys not configured")
     
     return TradingClient(api_key, api_secret, paper=True)
 
-def _positions_by_symbol(client: TradingClient) -> Dict[str, Position]:
-    pos = client.get_all_positions()
-    out = {}
-    for p in pos:
-        out[p.symbol] = p
-    return out
 
-def _close_position(client: TradingClient, symbol: str) -> bool:
-    """Close a position in Alpaca. Returns True if successful, False otherwise."""
-    try:
-        result = client.close_position(symbol)
-        print(f"[SUCCESS] Closed position {symbol}: {result}")
-        return True
-    except Exception as e:
-        print(f"[ERROR] close_position({symbol}) failed: {e}")
-        return False
+def _positions_by_symbol(client: TradingClient) -> Dict[str, Position]:
+    """Get all positions keyed by symbol"""
+    positions = client.get_all_positions()
+    return {p.symbol: p for p in positions}
+
 
 def _submit_close_order(client: TradingClient, pos: Position) -> Optional[str]:
-    """Submit a market order to close an Alpaca Position.
-
-    Returns order_id if submitted successfully, otherwise None.
-    """
+    """Submit market order to close position"""
     try:
         symbol = pos.symbol
-        # Alpaca Position.qty is typically a string; convert to absolute integer quantity
-        try:
-            qty = int(abs(float(pos.qty)))
-        except Exception:
-            qty = int(abs(float(str(pos.qty))))
-
+        qty = int(abs(float(pos.qty)))
+        
         if qty <= 0:
-            print(f"[WARN] Position {symbol} has non-positive qty={pos.qty}; skipping close order")
+            print(f"[WARN] Position {symbol} has zero qty")
             return None
-
-        # For long positions, sell to close; for short positions, buy to cover
+        
         side = OrderSide.SELL if getattr(pos, "side", "long").lower() == "long" else OrderSide.BUY
-
+        
         order = client.submit_order(
             order_data=MarketOrderRequest(
                 symbol=symbol,
@@ -250,364 +192,415 @@ def _submit_close_order(client: TradingClient, pos: Position) -> Optional[str]:
                 time_in_force=TimeInForce.DAY,
             )
         )
-        print(f"[INFO] Submitted exit order for {symbol}: side={side.value} qty={qty} order_id={order.id}")
+        print(f"[INFO] Exit order: {symbol} {side.value} {qty} (order_id={order.id})")
         return order.id
     except Exception as e:
-        print(f"[ERROR] submit close order failed for {pos.symbol}: {e}")
+        print(f"[ERROR] Failed to close {pos.symbol}: {e}")
         return None
 
-# ---------- Core ----------
-def run_once(cfg: RunConfig) -> dict:
+
+# ========== Chart & Signal Detection ==========
+def create_chart(ticker: str, config: TradingConfig) -> Optional[BytesIO]:
+    """Generate candlestick chart for signal detection"""
+    try:
+        df = yf.download(ticker, period="1y", interval=config.interval, 
+                        progress=False, auto_adjust=False)
+        
+        if df.empty or len(df) < config.lookback_bars:
+            return None
+        
+        chart_data = df.tail(config.lookback_bars).copy()
+        
+        for col in ['Open', 'High', 'Low', 'Close']:
+            chart_data[col] = pd.to_numeric(chart_data[col], errors='coerce')
+        chart_data = chart_data.dropna(subset=['Open', 'High', 'Low', 'Close'])
+        
+        if len(chart_data) < config.lookback_bars * 0.9:
+            return None
+        
+        fig, axes = mpf.plot(
+            chart_data,
+            type='candle',
+            style=config.chart_style,
+            figsize=config.figsize,
+            volume=False,
+            returnfig=True,
+            tight_layout=True,
+            warn_too_much_data=config.lookback_bars + 100
+        )
+        
+        ax = axes[0] if isinstance(axes, (list, tuple)) else axes
+        ax.grid(False)
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.tick_params(left=False, bottom=False)
+        
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=config.dpi, bbox_inches='tight',
+                   facecolor='white', edgecolor='none', pad_inches=0.1)
+        buf.seek(0)
+        plt.close(fig)
+        return buf
+        
+    except Exception as e:
+        return None
+
+
+def detect_signals(image_buffer: BytesIO, model: YOLO, config: TradingConfig, 
+                  ticker: str) -> List[dict]:
+    """Run YOLO detection on chart"""
+    try:
+        image = Image.open(image_buffer).convert('RGB')
+        image_array = np.array(image)
+        
+        results = model.predict(
+            image_array,
+            conf=config.conf_threshold,
+            verbose=False,
+            save=False,
+            show=False
+        )
+        
+        signals = []
+        if results and len(results) > 0:
+            result = results[0]
+            if hasattr(result, 'boxes') and result.boxes is not None:
+                boxes = result.boxes
+                image_width = image_array.shape[1]
+                right_edge_threshold = image_width * 0.8
+                
+                for box in boxes:
+                    try:
+                        cls_id = int(box.cls[0].item())
+                        confidence = float(box.conf[0].item())
+                        class_name = model.names[cls_id].lower()
+                        
+                        if class_name not in config.valid_signals:
+                            continue
+                        
+                        if confidence < config.min_confidence:
+                            continue
+                        
+                        x1, y1, x2, y2 = box.xyxy[0].tolist()
+                        x_center = (x1 + x2) / 2
+                        is_right_edge = x_center >= right_edge_threshold
+                        
+                        if config.right_edge_only and not is_right_edge:
+                            continue
+                        
+                        signals.append({
+                            'ticker': ticker,
+                            'signal': class_name,
+                            'confidence': confidence,
+                            'right_edge': is_right_edge
+                        })
+                    except Exception:
+                        continue
+        
+        return signals
+        
+    except Exception:
+        return []
+
+
+# ========== Main Trading Logic ==========
+def run_once(config: TradingConfig) -> dict:
     """
-    1) Close any positions whose exit date is due
-    2) Scan right-edge signals
-    3) Place paper orders for up to N trades
-    4) Save artifacts (signals, orders, positions) and persist state
+    Daily trading cycle:
+    1. Exit positions due today (at close of day 5)
+    2. Scan for new signals
+    3. Place orders for next day's open
+    4. Track state
     """
-    # Clear yfinance cache to prevent corrupted data issues
     _clear_yfinance_cache()
     
-    # CI environment detection (no longer limiting universe size since we fixed API issues)
-    import os
-    ci_env = os.environ.get('CI', '').lower() in ('true', '1', 'yes')
-    github_actions = os.environ.get('GITHUB_ACTIONS', '').lower() in ('true', '1', 'yes')
-    
-    if ci_env or github_actions:
-        print("[INFO] Running in CI environment - full 1000 stock universe enabled")
-        # No longer limiting universe size - we fixed the root API issues
-    
-    # Prep
+    # Setup
     try:
         client = _alpaca_client_from_env()
         account = client.get_account()
-        equity = float(account.equity)  # paper equity
-        # Use broker-reported buying power to size entries safely across runs
-        try:
-            buying_power_remaining = float(getattr(account, "buying_power", equity))
-        except Exception:
-            buying_power_remaining = equity
-        print(f"[INFO] Paper equity: ${equity:,.2f}")
-        print(f"[INFO] Buying power: ${buying_power_remaining:,.2f}")
+        equity = float(account.equity)
+        buying_power = float(getattr(account, "buying_power", equity))
+        print(f"[INFO] Equity: ${equity:,.2f} | Buying power: ${buying_power:,.2f}")
         dry_run = False
     except ValueError as e:
-        print(f"[INFO] {e}")
-        print("[INFO] Running in DRY RUN mode - no actual trades will be placed")
+        print(f"[INFO] {e} - Running in DRY RUN mode")
         client = None
-        equity = 100000.0  # Default equity for dry run
-        buying_power_remaining = equity
+        equity = 100000.0
+        buying_power = equity
         dry_run = True
-
-    # 1) Exit due positions (based on our local state clock, not broker)
-    state = _load_state(cfg.state_path)
+    
+    # Load state
+    state = _load_state(config.state_path)
     open_trades: List[dict] = state.get("open_trades", [])
     today = _now_et().date()
-    still_open: List[dict] = []
-
+    
+    # ========== Step 1: Exit Due Positions ==========
+    still_open = []
+    exit_orders = []
+    exited_today = set()
+    
     if not dry_run:
         existing_positions = _positions_by_symbol(client)
-        # Backfill missing state entries from broker so exits don't depend on prior commits
-        existing_keys = set((str(t.get("symbol")).upper(), str(t.get("side", "long")).lower()) for t in open_trades)
+        
+        # Backfill missing state from broker
+        existing_keys = {(str(t.get("symbol")).upper(), str(t.get("side", "long")).lower()) 
+                        for t in open_trades}
         for pos in existing_positions.values():
             symbol = str(getattr(pos, "symbol", "")).upper()
             side = str(getattr(pos, "side", "long")).lower()
-            key = (symbol, side)
-            if key not in existing_keys:
-                # Synthesize an entry that is immediately due for exit
+            if (symbol, side) not in existing_keys:
                 synth_entry = {
                     "symbol": symbol,
                     "side": side,
-                    "qty": int(abs(float(getattr(pos, "qty", 0)))) if str(getattr(pos, "qty", "0")) else 0,
+                    "qty": int(abs(float(getattr(pos, "qty", 0)))),
                     "entry_date": str(today),
-                    # Honor configured holding period when backfilling unknown entries
-                    "exit_after": str(today + timedelta(days=cfg.holding_days)),
+                    "exit_after": str(add_trading_days(today, config.holding_days)),
                 }
-                print(f"[WARN] Backfilled missing state for broker-held {symbol} ({side}); scheduling exit after {cfg.holding_days} day(s)")
+                print(f"[WARN] Backfilled missing state for {symbol}")
                 open_trades.append(synth_entry)
-                existing_keys.add(key)
+                existing_keys.add((symbol, side))
     else:
         existing_positions = {}
-
+    
     closed_count = 0
-    exit_orders: List[dict] = []
-    exited_today: set[str] = set()
     for tr in open_trades:
         sym = tr["symbol"]
         due = date.fromisoformat(tr["exit_after"])
+        
         if today >= due:
-            print(f"[INFO] Position {sym} due for exit (exit_after: {due}, today: {today})")
-            if not dry_run:
-                if sym in existing_positions:
-                    pos = existing_positions[sym]
-                    print(f"[INFO] Found position in Alpaca: {sym} qty={pos.qty} side={pos.side}")
-                    order_id = _submit_close_order(client, pos)
-                    if order_id:
-                        closed_count += 1
-                        print(f"[SUCCESS] Exit order placed for {sym} (order_id={order_id})")
-                        # Record exit order to artifacts
-                        exit_orders.append({
-                            "symbol": sym,
-                            "side": "sell" if getattr(pos, "side", "long").lower() == "long" else "buy",
-                            "qty": int(abs(float(pos.qty))) if str(pos.qty) else None,
-                            "estimated_price": None,
-                            "confidence": None,
-                            "event_time": str(today),
-                            "order_id": order_id,
-                            "action": "exit",
-                        })
-                        # Successful order placed: drop from state
-                    else:
-                        # Fallback to broker-side liquidation
-                        success = _close_position(client, sym)
-                        if success:
-                            closed_count += 1
-                            print(f"[SUCCESS] Successfully requested broker liquidation for {sym}")
-                        else:
-                            # Keep in state to retry next run
-                            print(f"[ERROR] Failed to close {sym}; keeping in state to retry")
-                            still_open.append(tr)
-                            continue
+            print(f"[INFO] Position {sym} due for exit")
+            if not dry_run and sym in existing_positions:
+                pos = existing_positions[sym]
+                order_id = _submit_close_order(client, pos)
+                if order_id:
+                    closed_count += 1
+                    exit_orders.append({
+                        "symbol": sym,
+                        "side": "sell" if getattr(pos, "side", "long").lower() == "long" else "buy",
+                        "qty": int(abs(float(pos.qty))),
+                        "action": "exit",
+                        "order_id": order_id,
+                        "date": str(today)
+                    })
                 else:
-                    print(f"[WARN] Position {sym} not found in Alpaca positions (may have been closed manually)")
-                    # If broker doesn't have it, remove from state
-            else:
-                print(f"[DRY-RUN] Would close position {sym}")
-            # Always remove from state when exit date has passed
+                    still_open.append(tr)
+                    continue
+            elif dry_run:
+                print(f"[DRY-RUN] Would close {sym}")
+            
             exited_today.add(str(sym).upper())
         else:
             still_open.append(tr)
     
-    print(f"[INFO] Exit summary: {len(open_trades) - len(still_open)} positions removed from state, {closed_count} positions closed in Alpaca")
+    print(f"[INFO] Closed {closed_count} positions")
     state["open_trades"] = still_open
-    # Maintain cooldowns to avoid immediate re-entry after exit
+    
+    # Update cooldowns
     cooldowns: List[dict] = state.get("cooldowns", [])
-    # Drop expired cooldowns (until_date strictly before today)
-    try:
-        cooldowns = [c for c in cooldowns if date.fromisoformat(str(c.get("until_date"))) >= today]
-    except Exception:
-        cooldowns = []
-    for s in exited_today:
-        until = today + timedelta(days=cfg.cooldown_days_after_exit)
-        cooldowns.append({"symbol": s, "until_date": str(until)})
-    # Deduplicate by symbol, keep the farthest until_date
-    dedup: Dict[str, str] = {}
+    cooldowns = [c for c in cooldowns if date.fromisoformat(str(c.get("until_date"))) >= today]
+    
+    for sym in exited_today:
+        until = add_trading_days(today, config.cooldown_days_after_exit)
+        cooldowns.append({"symbol": sym, "until_date": str(until)})
+    
+    # Deduplicate cooldowns
+    dedup = {}
     for c in cooldowns:
-        sym_u = str(c.get("symbol", "")).upper()
+        sym = str(c.get("symbol", "")).upper()
         ud = str(c.get("until_date", str(today)))
-        if not sym_u:
-            continue
-        if sym_u not in dedup or date.fromisoformat(ud) > date.fromisoformat(dedup[sym_u]):
-            dedup[sym_u] = ud
+        if sym and (sym not in dedup or date.fromisoformat(ud) > date.fromisoformat(dedup[sym])):
+            dedup[sym] = ud
     state["cooldowns"] = [{"symbol": k, "until_date": v} for k, v in dedup.items()]
-    # Symbols currently under a holding period (do not trade opposite or same direction)
+    
+    # Blocked symbols
     open_symbols = {str(t.get("symbol", "")).upper() for t in state.get("open_trades", [])}
-    cooldown_symbols = {str(c.get("symbol", "")).upper() for c in state.get("cooldowns", []) if date.fromisoformat(str(c.get("until_date"))) >= today}
+    cooldown_symbols = {str(c.get("symbol", "")).upper() for c in state.get("cooldowns", []) 
+                       if date.fromisoformat(str(c.get("until_date"))) >= today}
     blocked_symbols = open_symbols | cooldown_symbols
-
-    # 2) Build & screen universe
-    bt = BTConfig(
-        interval=cfg.interval,
-        chunk_size=cfg.chunk_size,
-        min_price=cfg.min_price,
-        max_price=cfg.max_price,
-        min_dollar_vol=cfg.min_dollar_vol,
-        dollar_vol_lookback=cfg.lookback_days,
-        long_only=cfg.long_only,
-    )
-    # Log the device being used for YOLO inference to avoid confusion
-    try:
-        from backtest_yolo_events import get_logger
-        get_logger().info("Using device: %s", bt.device)
-    except Exception:
-        print(f"[INFO] Using device: {getattr(bt, 'device', 'cpu')}")
-    if cfg.use_csv_universe:
-        candidates = pd.read_csv(cfg.universe_csv_path)
-        col = "ticker" if "ticker" in candidates.columns else candidates.columns[0]
-        candidates = candidates[col].astype(str).str.upper().str.strip().tolist()
-    else:
-        # Use dynamic universe fetching
-        from backtest_yolo_events import fetch_top_stocks_by_volume
-        candidates = fetch_top_stocks_by_volume(max_stocks=cfg.max_universe_size)
-
-    if cfg.max_universe_size:
-        candidates = candidates[: cfg.max_universe_size]
-
-    tickers, screening_prices = screen_by_price_and_liquidity(
-        candidates,
-        min_price=cfg.min_price,
-        max_price=cfg.max_price,
-        min_dollar_vol=cfg.min_dollar_vol,
-        lookback_days=cfg.lookback_days,
-    )
-
+    
+    # ========== Step 2: Build Universe ==========
+    print("[INFO] Building universe...")
+    from simple_tester import build_universe_candidates, screen_by_price_and_liquidity
+    
+    candidates = build_universe_candidates(config)
+    if config.max_universe_size:
+        candidates = candidates[:config.max_universe_size]
+    
+    tickers, screening_prices = screen_by_price_and_liquidity(candidates, config)
+    
     if not tickers:
-        print("[WARN] No tickers passed screen. Trying reliable fallback list...")
-        # Try with a smaller, more reliable list
-        from backtest_yolo_events import get_reliable_stock_list
-        reliable_candidates = get_reliable_stock_list()
-        tickers, screening_prices = screen_by_price_and_liquidity(
-            reliable_candidates,
-            min_price=cfg.min_price,
-            max_price=cfg.max_price,
-            min_dollar_vol=cfg.min_dollar_vol,
-            lookback_days=cfg.lookback_days,
-        )
+        print("[WARN] No tickers passed screening")
+        _save_state(config.state_path, state)
+        return {"signals": [], "orders": exit_orders}
+    
+    print(f"[INFO] Screened: {len(tickers)} tickers")
+    
+    # ========== Step 3: Scan for Signals ==========
+    print("[INFO] Scanning for signals...")
+    model = YOLO(config.model_path)
+    
+    all_signals = []
+    for ticker in tickers:
+        if ticker.upper() in blocked_symbols:
+            continue
         
-        if not tickers:
-            print("[ERROR] No tickers passed screen even with fallback list.")
-            return {"signals": pd.DataFrame(), "orders": []}
-        else:
-            print(f"[INFO] Using fallback list: {len(tickers)} tickers passed screen.")
-
-    # 3) Scan signals
-    model = YOLO(cfg.model_path)
-    sigs = scan_right_edge_signals(
-        tickers=tickers,
-        cfg=bt,
-        model=model,
-        interval=cfg.interval,
-        chunk_size=cfg.chunk_size,
-    )
-    if sigs.empty:
-        print("[INFO] No right-edge signals today.")
-    else:
-        print(f"[INFO] Found {len(sigs)} signals.")
-
-    # 4) Place orders (rank by confidence; apply caps)
-    placed_orders = []
-    # Include exit orders first so they appear in today's artifacts
-    placed_orders.extend(exit_orders)
-    # Refresh account after exits so proceeds are usable for entries this run
+        chart = create_chart(ticker, config)
+        if chart is None:
+            continue
+        
+        signals = detect_signals(chart, model, config, ticker)
+        all_signals.extend(signals)
+    
+    if not all_signals:
+        print("[INFO] No signals detected")
+        _save_state(config.state_path, state)
+        return {"signals": [], "orders": exit_orders}
+    
+    print(f"[INFO] Found {len(all_signals)} signals")
+    
+    # Check for conflicting signals
+    if config.ignore_conflicting_signals:
+        ticker_signals = {}
+        for sig in all_signals:
+            t = sig['ticker']
+            ticker_signals.setdefault(t, []).append(sig)
+        
+        filtered_signals = []
+        for ticker, sigs in ticker_signals.items():
+            signal_types = {s['signal'] for s in sigs}
+            if len(signal_types) == 1:
+                filtered_signals.extend(sigs)
+            else:
+                print(f"[INFO] Ignoring conflicting signals for {ticker}")
+        all_signals = filtered_signals
+    
+    # Sort by confidence
+    all_signals.sort(key=lambda x: x['confidence'], reverse=True)
+    
+    # ========== Step 4: Place Orders ==========
+    print("[INFO] Placing orders...")
+    placed_orders = list(exit_orders)  # Include exits
+    
+    # Refresh account after exits
     if not dry_run:
         try:
             account = client.get_account()
             equity = float(account.equity)
-            try:
-                buying_power_remaining = float(getattr(account, "buying_power", equity))
-            except Exception:
-                buying_power_remaining = equity
-            print(f"[INFO] Refreshed account after exits: equity=${equity:,.2f}, buying_power=${buying_power_remaining:,.2f}")
+            buying_power = float(getattr(account, "buying_power", equity))
+            positions = _positions_by_symbol(client)
         except Exception as e:
-            print(f"[WARN] Failed to refresh account after exits: {e}")
-        positions = _positions_by_symbol(client)  # refresh after exits
+            print(f"[WARN] Failed to refresh account: {e}")
+            positions = {}
     else:
         positions = {}
-    day_cap_notional = equity * cfg.max_portfolio_day_cap
+    
+    day_cap_notional = equity * config.max_portfolio_day_cap
     used_notional = 0.0
-
-    # Convert to simple list of dicts ordered by confidence
-    rows = sigs.to_dict(orient="records")
-    rows = sorted(rows, key=lambda r: float(r.get("confidence") or 0.0), reverse=True)
-
-    # Price cache to avoid double API calls - start with screening prices
     price_cache = screening_prices.copy()
-    print(f"[INFO] Initialized price cache with {len(price_cache)} prices from screening")
-
-    for row in rows:
-        if len(placed_orders) >= cfg.max_trades_per_day:
+    
+    for sig in all_signals:
+        if len([o for o in placed_orders if o.get('action') != 'exit']) >= config.max_trades_per_day:
             break
-        sym = row["ticker"]
-        sig = row["signal"].lower()
-        if cfg.long_only and sig != "buy":
-            continue
-
-        # Respect holding period: if we have an open trade for this symbol, skip any new trade
-        if sym.upper() in blocked_symbols:
-            print(f"[INFO] Skipping {sym}: holding/cooldown active")
-            continue
-
-        # Use cached price or fetch new one
-        if sym in price_cache:
-            price = price_cache[sym]
-        else:
-            # For CI environments, skip individual price fetches to avoid rate limiting
-            import os
-            if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
-                print(f"[INFO] Skipping price fetch for {sym} in CI - using approximate price")
-                # Use a reasonable default price for paper trading in CI
-                price = 100.0  # This won't affect actual trades since it's DRY RUN
-                price_cache[sym] = price
-            else:
-                price = _latest_close_price(sym)
-                if price:
-                    price_cache[sym] = price
-                # Add delay only for new fetches
-                import time
-                time.sleep(1)  # 1 second delay for new price fetches
         
-        # Size this order by remaining buying power, day cap, and per-trade cap
-        per_trade_notional = equity * cfg.max_alloc_per_trade
+        if len(state["open_trades"]) >= config.max_positions:
+            print("[INFO] Max positions reached")
+            break
+        
+        ticker = sig['ticker']
+        signal_type = sig['signal']
+        
+        # Skip if already holding
+        if ticker in positions:
+            continue
+        
+        # Get price
+        if ticker in price_cache:
+            price = price_cache[ticker]
+        else:
+            price = _latest_close_price(ticker)
+            if price:
+                price_cache[ticker] = price
+            import time
+            time.sleep(1)
+        
+        if not price:
+            continue
+        
+        # Calculate position size
+        per_trade_notional = equity * config.max_alloc_per_trade
         remaining_day_cap = max(0.0, day_cap_notional - used_notional)
-        available_notional = min(per_trade_notional, remaining_day_cap, max(0.0, buying_power_remaining))
-        notional = available_notional
-        qty = _qty_for_notional(price, notional)
+        available_notional = min(per_trade_notional, remaining_day_cap, buying_power)
+        
+        qty = int(available_notional / price)
         if qty < 1:
             continue
-
-        side = OrderSide.BUY if sig == "buy" else OrderSide.SELL
-
-        # Avoid stacking multiple same-direction positions: if we already hold long and signal is buy, skip
-        if sym in positions:
-            pos = positions[sym]
-            already_long = (pos.side.lower() == "long")
-            already_short = (pos.side.lower() == "short")
-            # Additionally, avoid flipping direction while holding (respect holding window)
-            if (side == OrderSide.BUY and already_long) or (side == OrderSide.SELL and already_short):
-                print(f"[INFO] Skipping {sym}: already holding {pos.side}")
-                continue
-
+        
+        side = OrderSide.BUY if signal_type == "buy" else OrderSide.SELL
+        
         try:
             if dry_run:
-                print(f"[DRY RUN] Would place {side.value} {qty} {sym} at ~${price:.2f}")
-                order_id = f"DRY_RUN_{sym}_{today}"
+                print(f"[DRY RUN] Would place {side.value} {qty} {ticker}")
+                order_id = f"DRY_{ticker}_{today}"
             else:
                 order = client.submit_order(
                     order_data=MarketOrderRequest(
-                        symbol=sym,
+                        symbol=ticker,
                         qty=qty,
                         side=side,
                         time_in_force=TimeInForce.DAY,
                     )
                 )
-                print(f"[INFO] Placed {side.value} {qty} {sym}")
+                print(f"[INFO] Placed {side.value} {qty} {ticker}")
                 order_id = order.id
             
             placed_orders.append({
-                "symbol": sym,
+                "symbol": ticker,
                 "side": side.value,
                 "qty": qty,
                 "estimated_price": price,
-                "confidence": float(row.get("confidence") or 0.0),
-                "event_time": str(row["event_time"]),
+                "confidence": sig['confidence'],
                 "order_id": order_id,
+                "date": str(today),
+                "action": "entry"
             })
-            order_notional = (price or 0.0) * qty
+            
+            order_notional = price * qty
             used_notional += order_notional
-            # Reduce local view of buying power to prevent over-ordering within this run
-            buying_power_remaining = max(0.0, buying_power_remaining - order_notional)
-
-            # Track exit plan only if we *opened* a new exposure in that direction
-            exit_after = today + timedelta(days=cfg.holding_days)
+            buying_power = max(0.0, buying_power - order_notional)
+            
+            # Schedule exit (5 TRADING days from tomorrow's entry)
+            entry_date = add_trading_days(today, 1)  # Enters tomorrow
+            exit_date = add_trading_days(entry_date, config.holding_days)
+            
             state["open_trades"].append({
-                "symbol": sym,
+                "symbol": ticker,
                 "side": "long" if side == OrderSide.BUY else "short",
                 "qty": qty,
-                "entry_date": str(today),
-                "exit_after": str(exit_after),
+                "entry_date": str(entry_date),
+                "exit_after": str(exit_date),
             })
-
+            
         except Exception as e:
-            print(f"[ERROR] submit_order failed for {sym}: {e}")
-
-    # 5) Save artifacts
+            print(f"[ERROR] Failed to place order for {ticker}: {e}")
+    
+    # ========== Step 5: Save Artifacts ==========
     run_day = _now_et().strftime("%Y-%m-%d")
-    outdir = cfg.runs_dir / run_day
+    outdir = config.runs_dir / run_day
     outdir.mkdir(parents=True, exist_ok=True)
-
-    sigs.to_csv(outdir / "signals.csv", index=False)
+    
+    # Save signals
+    if all_signals:
+        pd.DataFrame(all_signals).to_csv(outdir / "signals.csv", index=False)
+    
+    # Save orders
     if placed_orders:
         pd.DataFrame(placed_orders).to_csv(outdir / "orders.csv", index=False)
-
-    # Save current positions snapshot
+    
+    # Save positions snapshot
     if not dry_run:
         current_pos = client.get_all_positions()
         if current_pos:
@@ -619,20 +612,21 @@ def run_once(cfg: RunConfig) -> dict:
                 "avg_entry_price": float(p.avg_entry_price),
                 "unrealized_pl": float(p.unrealized_pl)
             } for p in current_pos]).to_csv(outdir / "positions.csv", index=False)
-    else:
-        # In dry run mode, save empty positions file
-        pd.DataFrame(columns=["symbol", "qty", "side", "market_value", "avg_entry_price", "unrealized_pl"]).to_csv(outdir / "positions.csv", index=False)
-
-    _save_state(cfg.state_path, state)
-
+    
+    _save_state(config.state_path, state)
+    
+    print(f"[INFO] Saved artifacts to {outdir}")
+    print(f"[DONE] Signals: {len(all_signals)}, Orders: {len(placed_orders)}")
+    
     return {
-        "signals": sigs,
+        "signals": all_signals,
         "orders": placed_orders,
-        "positions_path": str(outdir / "positions.csv"),
-        "outdir": str(outdir),
+        "outdir": str(outdir)
     }
 
+
 if __name__ == "__main__":
-    cfg = RunConfig()
-    res = run_once(cfg)
-    print("[DONE]", res.get("outdir", ""))
+    config = TradingConfig()
+    config.validate()
+    result = run_once(config)
+    print(f"[COMPLETE] {result.get('outdir', '')}")
