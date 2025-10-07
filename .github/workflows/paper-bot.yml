@@ -2,29 +2,35 @@ name: Paper Trader (ChartScanAI)
 
 on:
   schedule:
-    # 08:00 ET during Daylight (UTC-4)
-    - cron: "0 12 * * 1-5"
-    # 08:00 ET during Standard (UTC-5)
-    - cron: "0 13 * * 1-5"
-  workflow_dispatch: {}
+    # Run at 7:30 AM ET (11:30 UTC during DST, 12:30 UTC during Standard)
+    # Using 11:45 UTC as safe middle ground - runs once per day
+    - cron: "45 11 * * 1-5"
+  
+  workflow_dispatch: {}  # Manual trigger for testing
+  
   push:
     branches: ["main"]
+    paths:
+      - 'paper_trader_live.py'
+      - 'trading_config.py'
+      - '.github/workflows/trader.yml'
 
 permissions:
   contents: write
 
 jobs:
-  run:
+  trade:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Python
+      
+      - name: Setup Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-
+      
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -32,61 +38,103 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-
-      - name: Cache PyTorch CPU wheels
+      
+      - name: Cache PyTorch CPU
         uses: actions/cache@v4
         with:
           path: ~/.cache/torch
-          key: ${{ runner.os }}-torch-cpu-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-torch-cpu-2.3
           restore-keys: |
             ${{ runner.os }}-torch-cpu-
-
+      
       - name: Cache model weights
         uses: actions/cache@v4
         with:
           path: weights/
-          key: ${{ runner.os }}-model-weights-${{ hashFiles('weights/**') }}
+          key: ${{ runner.os }}-yolo-weights-${{ hashFiles('weights/**') }}
           restore-keys: |
-            ${{ runner.os }}-model-weights-
-
-      - name: Install deps (CPU)
+            ${{ runner.os }}-yolo-weights-
+      
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --extra-index-url https://download.pytorch.org/whl/cpu "torch>=2.3,<3" "torchvision>=0.18,<1"
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install ultralytics yfinance mplfinance pandas numpy pillow alpaca-py; fi
-
-      - name: Verify model file exists
+          
+          # Install PyTorch CPU version (faster, smaller)
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu \
+            "torch>=2.3,<3" "torchvision>=0.18,<1"
+          
+          # Install other requirements
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install ultralytics yfinance mplfinance pandas numpy pillow alpaca-py
+          fi
+      
+      - name: Verify model exists
         run: |
           if [ ! -f "weights/custom_yolov8.pt" ]; then
-            echo "ERROR: Model file weights/custom_yolov8.pt not found!"
-            echo "Please ensure the model file is committed to the repository."
+            echo "❌ ERROR: Model file not found at weights/custom_yolov8.pt"
+            echo "Please commit the model file to the repository"
             exit 1
           fi
-          echo "Model file found: $(ls -la weights/custom_yolov8.pt)"
-
-      - name: Run trader (DRY RUN if no secrets)
+          echo "✅ Model found: $(ls -lh weights/custom_yolov8.pt)"
+      
+      - name: Verify config exists
+        run: |
+          if [ ! -f "trading_config.py" ]; then
+            echo "❌ ERROR: trading_config.py not found"
+            exit 1
+          fi
+          echo "✅ Config found"
+      
+      - name: Run paper trader
         env:
           ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          CI: true  # Flag for CI environment
+          GITHUB_ACTIONS: true
         run: |
-          echo "Starting ChartScanAI Paper Trader..."
-          python paper_trader_fast.py
-          echo "Paper trader completed successfully."
-
-      - name: Commit artifacts
+          echo "================================================"
+          echo "ChartScanAI Paper Trader"
+          echo "Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "================================================"
+          
+          python paper_trader_live.py
+          
+          echo ""
+          echo "✅ Trading cycle complete"
+      
+      - name: Commit and push artifacts
         run: |
           git config user.name "chartscan-bot"
           git config user.email "chartscan-bot@users.noreply.github.com"
-
-          # Stage all normal (non-ignored) changes first
-          git add -A || true
-          # Force-add ignored artifacts so state persists across runs
+          
+          # Stage all changes (including new files)
+          git add -A
+          
+          # Force add ignored paths that we want to persist
           git add -f daily_runs/ paper_state.json || true
-
-          # Commit only if there are staged changes
+          
+          # Check if there are changes to commit
           if git diff --staged --quiet; then
-            echo "No staged changes to commit"
+            echo "ℹ️  No changes to commit"
           else
-            git commit -m "chore(run): paper bot artifacts $(date -u +'%Y-%m-%d %H:%M:%SZ')"
+            # Commit with timestamp
+            TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "chore: paper trader run - $TIMESTAMP"
+            
+            # Push changes
             git push
+            
+            echo "✅ Artifacts committed and pushed"
           fi
+      
+      - name: Upload run artifacts (backup)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trading-run-${{ github.run_number }}
+          path: |
+            daily_runs/
+            paper_state.json
+          retention-days: 30
