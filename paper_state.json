@@ -41,6 +41,76 @@
       "qty": 1,
       "entry_date": "2025-10-07",
       "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "LH",
+      "side": "positionside.long",
+      "qty": 39,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "LW",
+      "side": "positionside.long",
+      "qty": 677,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "NIO",
+      "side": "positionside.long",
+      "qty": 2,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "NWL",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "T",
+      "side": "positionside.long",
+      "qty": 1660,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "TME",
+      "side": "positionside.long",
+      "qty": 1,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "IR",
+      "side": "long",
+      "qty": 510,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "CBOE",
+      "side": "long",
+      "qty": 179,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "PFE",
+      "side": "short",
+      "qty": 417,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
+    },
+    {
+      "symbol": "HBI",
+      "side": "long",
+      "qty": 1,
+      "entry_date": "2025-10-07",
+      "exit_after": "2025-10-12"
     }
   ],
   "cooldowns": [
